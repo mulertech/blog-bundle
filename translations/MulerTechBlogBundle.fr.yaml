@@ -1,5 +1,7 @@
 blog:
     title: Blog
+    meta:
+        description: Les articles du blog.
     date_format: d/m/Y
     search:
         label: Rechercher un article

@@ -104,6 +104,12 @@ use MulerTech\BlogBundle\Entity\AbstractBlogPost;
 class BlogPost extends AbstractBlogPost
 {
     // Fields of this site only: category, tags, author...
+
+    // Who writes, shown with the article by search engines: an author, the company.
+    public function getSeoAuthorName(): string
+    {
+        return 'MulerTech';
+    }
 }
 ```
 
@@ -201,7 +207,7 @@ Each part of a page is a template of its own, so a site replaces only what diffe
 | `blog/_share.html.twig` | Sharing on LinkedIn, X and Facebook |
 | `blog/_navigation.html.twig` | Previous article, back to the list, next article |
 
-The article page adds to the layout's `seo_meta` block, keeping what the layout puts there, an `hreflang` link per published version of the article when it has versions in other languages.
+Both pages replace the layout's `seo_meta` block with their own meta tags (see below): whether a layout leaves that block empty or includes the seo-bundle template there, the page carries its tags exactly once.
 
 ### 4. Labels
 
@@ -259,3 +265,20 @@ The fields it adds are rendered after the bundle's ones; replace `admin/_form.ht
 | `admin/_actions.html.twig` | Status, publish or unpublish, delete |
 | `admin/_form.html.twig` | The form, with the cover cropper |
 | `admin/_files.html.twig` | The attached files |
+
+### 6. Search engines and social platforms
+
+The blog relies on `mulertech/seo-bundle`, configured and with its routes imported as its README says: the sitemap, `llms.txt` and the social cards are served by its routes.
+
+| Page or file | What the blog declares |
+|---|---|
+| List | Title and description (the `blog.title` and `blog.meta.description` labels, to reword in the site's translations). A search points its canonical at the list, so no query is indexed as a page of its own |
+| Article | Title, meta description, `og:type` `article`, publication and modification dates, author, and an `hreflang` link per published version in another language |
+| Article image | The 1200×630 JPEG card seo-bundle derives from the featured image, under the social card type `blog`; without featured image, the site's `default_image` |
+| Structured data | A schema.org `BlogPosting` (headline, author, dates, description) |
+| Sitemap | The list of each language, then every published article, dated by its last change |
+| `llms.txt` | A section listing the published articles with their meta description |
+
+With `mulertech/csp-bundle` installed, the structured data script carries the nonce of its `main` handle; without it, no nonce, and the site's policy is its own to adapt.
+
+A site keeping a social card provider of its own under the type `blog` makes seo-bundle refuse both, naming them: remove the site's one.

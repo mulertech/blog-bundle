@@ -5,9 +5,14 @@ declare(strict_types=1);
 namespace MulerTech\BlogBundle\Tests\Controller;
 
 use MulerTech\BlogBundle\Controller\BlogController;
+use MulerTech\BlogBundle\Seo\BlogPostSocialCardProvider;
 use MulerTech\BlogBundle\Service\ViewCounter;
 use MulerTech\BlogBundle\Tests\Fixtures\Entity\BlogPost;
 use MulerTech\BlogBundle\Tests\Fixtures\Entity\File;
+use MulerTech\FileBundle\Model\FileInterface;
+use MulerTech\FileBundle\Service\FileManagerInterface;
+use MulerTech\SeoBundle\Service\SocialCardService;
+use Psr\Log\NullLogger;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -196,7 +201,98 @@ final class BlogControllerTest extends PublicPageTestCase
 
         self::assertSame(['fr', 'en'], $links->each(static fn (Crawler $link): ?string => $link->attr('hreflang')));
         self::assertSame(['https://example.com/fr/blog/bienvenue', 'https://example.com/en/blog/welcome'], $links->each(static fn (Crawler $link): ?string => $link->attr('href')));
-        self::assertCount(1, $this->show('bienvenue')->filter('meta[name=site-meta]'), 'the layout\'s own meta tags are kept');
+    }
+
+    /**
+     * Whether a layout leaves its `seo_meta` block empty or fills it, the page carries its
+     * meta tags exactly once.
+     */
+    public function testThePageReplacesTheMetaTagsOfTheLayout(): void
+    {
+        $this->post('Bienvenue', slug: 'bienvenue');
+
+        $page = $this->show('bienvenue');
+
+        self::assertCount(0, $page->filter('meta[name=site-meta]'));
+        self::assertCount(1, $page->filter('meta[property="og:title"]'));
+        self::assertCount(1, $page->filter('link[rel=canonical]'));
+    }
+
+    public function testTheArticleDescribesItselfToSearchEnginesAndPlatforms(): void
+    {
+        $post = $this->post('Héberger un site', publishedAt: '2026-03-14 10:00', slug: 'heberger-un-site');
+        $post->setMetaDescription('Pourquoi un hébergeur en France.');
+        $this->entityManager->flush();
+
+        $page = $this->show('heberger-un-site', '/fr/blog/heberger-un-site');
+
+        self::assertSame('Héberger un site', $page->filter('meta[property="og:title"]')->attr('content'));
+        self::assertSame('Pourquoi un hébergeur en France.', $page->filter('meta[property="og:description"]')->attr('content'));
+        self::assertSame('article', $page->filter('meta[property="og:type"]')->attr('content'));
+        self::assertSame('https://example.com/fr/blog/heberger-un-site', $page->filter('link[rel=canonical]')->attr('href'));
+        self::assertSame('2026-03-14T10:00:00+00:00', $page->filter('meta[property="article:published_time"]')->attr('content'));
+        self::assertSame('Jeanne Martin', $page->filter('meta[property="article:author"]')->attr('content'));
+    }
+
+    /**
+     * Platforms want a 1200x630 JPEG; seo-bundle derives it from the featured image.
+     */
+    public function testTheArticleIsSharedWithTheCardOfItsFeaturedImage(): void
+    {
+        $post = $this->post('Illustré', slug: 'illustre');
+        $image = $this->file('cover.webp', 'image/webp');
+        $post->setFeaturedImage($image);
+        $this->entityManager->flush();
+
+        $page = $this->show('illustre');
+
+        self::assertMatchesRegularExpression(
+            sprintf('#^https://example\.com/social-card/blog/image-%d-[0-9a-f]{8}\.jpg$#', $post->getId()),
+            (string) $page->filter('meta[property="og:image"]')->attr('content'),
+        );
+        self::assertSame('1200', $page->filter('meta[property="og:image:width"]')->attr('content'));
+        self::assertSame('630', $page->filter('meta[property="og:image:height"]')->attr('content'));
+        self::assertSame('image/jpeg', $page->filter('meta[property="og:image:type"]')->attr('content'));
+        self::assertSame('Illustré', $page->filter('meta[property="og:image:alt"]')->attr('content'));
+    }
+
+    public function testAnArticleWithoutImageIsSharedWithTheSiteDefaultImage(): void
+    {
+        $this->post('Bienvenue', slug: 'bienvenue');
+
+        self::assertSame('https://example.com/images/og-default.jpg', $this->show('bienvenue')->filter('meta[property="og:image"]')->attr('content'));
+    }
+
+    public function testTheArticleDeclaresItselfAsABlogPosting(): void
+    {
+        $this->post('Bienvenue', publishedAt: '2026-03-14 10:00', slug: 'bienvenue');
+
+        $data = json_decode((string) $this->show('bienvenue')->filter('script[type="application/ld+json"]')->text(), true);
+
+        self::assertIsArray($data);
+        self::assertSame('BlogPosting', $data['@type']);
+        self::assertSame('Bienvenue', $data['headline']);
+        self::assertSame(['@type' => 'Person', 'name' => 'Jeanne Martin'], $data['author']);
+        self::assertSame('2026-03-14T10:00:00+00:00', $data['datePublished']);
+    }
+
+    public function testTheListDescribesItself(): void
+    {
+        $page = $this->index();
+
+        self::assertSame('Blog', $page->filter('meta[property="og:title"]')->attr('content'));
+        self::assertSame('Les articles du blog.', $page->filter('meta[property="og:description"]')->attr('content'));
+        self::assertSame('https://example.com/fr/blog', $page->filter('link[rel=canonical]')->attr('href'));
+    }
+
+    /**
+     * Every query typed would otherwise be a page of its own for search engines.
+     */
+    public function testASearchPointsSearchEnginesAtTheList(): void
+    {
+        $this->post('Facturation');
+
+        self::assertSame('https://example.com/fr/blog', $this->index(['q' => 'facturation'])->filter('link[rel=canonical]')->attr('href'));
     }
 
     public function testAnArticleWithoutTranslationAnnouncesNoVersion(): void
@@ -232,14 +328,28 @@ final class BlogControllerTest extends PublicPageTestCase
         return new Crawler((string) $this->controller()->index($this->request($query))->getContent());
     }
 
-    private function show(string $slug): Crawler
+    private function show(string $slug, string $path = '/fr/blog/article'): Crawler
     {
-        return new Crawler((string) $this->controller()->show($this->request(), $slug)->getContent());
+        return new Crawler((string) $this->controller()->show($this->request(path: $path), $slug)->getContent());
     }
 
     private function controller(): BlogController
     {
-        return new BlogController($this->repository(), new ViewCounter($this->entityManager, $this->requestStack), $this->twig, 'base.html.twig');
+        $fileManager = $this->createStub(FileManagerInterface::class);
+        $fileManager->method('getAbsolutePath')->willReturnCallback(static fn (FileInterface $file): string => '/storage/'.$file->getStoredFilename());
+        $socialCards = new BlogPostSocialCardProvider($this->repository(), $fileManager);
+
+        return new BlogController(
+            $this->repository(),
+            new ViewCounter($this->entityManager, $this->requestStack),
+            $this->twig,
+            $this->metaTagService,
+            new SocialCardService([$socialCards], $this->urlGenerator, new NullLogger(), sys_get_temp_dir(), 0xFFFFFF),
+            $socialCards,
+            $this->postUrls(),
+            $this->translator,
+            'base.html.twig',
+        );
     }
 
     private function file(string $filename, string $mimeType): File

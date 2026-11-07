@@ -23,6 +23,11 @@ class BlogPost extends AbstractBlogPost
         return $this->excerpt;
     }
 
+    public function getSeoAuthorName(): string
+    {
+        return 'Jeanne Martin';
+    }
+
     public function setExcerpt(?string $excerpt): static
     {
         $this->excerpt = $excerpt;

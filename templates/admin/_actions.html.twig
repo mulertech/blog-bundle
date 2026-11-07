@@ -7,7 +7,7 @@
         {% endif %}
     </span>
     {% if post.published %}
-        <a href="{{ path('mulertech_blog_show', {slug: post.slug, _locale: post.locale}) }}" target="_blank" class="text-gray-900 underline">{{ 'admin.view'|trans({}, 'MulerTechBlogBundle') }}</a>
+        <a href="{{ mulertech_blog_post_url(post) }}" target="_blank" class="text-gray-900 underline">{{ 'admin.view'|trans({}, 'MulerTechBlogBundle') }}</a>
         <form method="post" action="{{ path('mulertech_blog_admin_unpublish', {id: post.id}) }}">
             <input type="hidden" name="_token" value="{{ csrf_token('mulertech_blog_publish_' ~ post.id) }}">
             <button type="submit" class="rounded-lg bg-gray-100 px-4 py-2 font-semibold text-gray-900 hover:bg-gray-200">{{ 'admin.unpublish'|trans({}, 'MulerTechBlogBundle') }}</button>

@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace MulerTech\BlogBundle\Controller;
 
+use MulerTech\BlogBundle\Entity\AbstractBlogPost;
 use MulerTech\BlogBundle\Repository\BlogPostRepository;
+use MulerTech\BlogBundle\Seo\BlogPostSocialCardProvider;
+use MulerTech\BlogBundle\Service\PostUrlGenerator;
 use MulerTech\BlogBundle\Service\ViewCounter;
+use MulerTech\SeoBundle\Service\MetaTagService;
+use MulerTech\SeoBundle\Service\SocialCardService;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Contracts\Translation\TranslatorInterface;
 use Twig\Environment;
 
 /**
@@ -21,6 +27,11 @@ final readonly class BlogController
         private BlogPostRepository $repository,
         private ViewCounter $viewCounter,
         private Environment $twig,
+        private MetaTagService $metaTagService,
+        private SocialCardService $socialCardService,
+        private BlogPostSocialCardProvider $socialCards,
+        private PostUrlGenerator $urls,
+        private TranslatorInterface $translator,
         private string $publicLayout,
     ) {
     }
@@ -48,6 +59,13 @@ final readonly class BlogController
             'search' => $search,
             'recent_posts' => $this->repository->findRecent($locale),
             'popular_posts' => $this->repository->findPopular($locale),
+            'seo' => $this->metaTagService->generateMetaTags([
+                'title' => $this->translator->trans('blog.title', [], 'MulerTechBlogBundle'),
+                'description' => $this->translator->trans('blog.meta.description', [], 'MulerTechBlogBundle'),
+                // A search result is not a page of its own: it points search engines at
+                // the list rather than letting every query be indexed.
+                ...('' === $search ? [] : ['url' => $this->urls->index($locale, true)]),
+            ]),
         ]));
     }
 
@@ -64,6 +82,35 @@ final readonly class BlogController
             'previous_post' => $this->repository->findPrevious($post),
             'next_post' => $this->repository->findNext($post),
             'translations' => $this->repository->findTranslations($post),
+            'seo' => $this->metaTagService->generateMetaTags([
+                'title' => $post->getTitle(),
+                'description' => $post->getMetaDescription(),
+                'type' => 'article',
+                'publishedTime' => $post->getSeoPublishedAt(),
+                'modifiedTime' => $post->getSeoUpdatedAt(),
+                'author' => $post->getSeoAuthorName(),
+                ...$this->socialCard($post),
+            ]),
         ]));
+    }
+
+    /**
+     * The card derived from the featured image, or nothing, in which case the meta tags
+     * fall back to the site's default image.
+     *
+     * @return array<string, string|int>
+     */
+    private function socialCard(AbstractBlogPost $post): array
+    {
+        $cover = $post->getFeaturedImage();
+
+        if (null === $cover || null === $post->getId()) {
+            return [];
+        }
+
+        return [
+            ...$this->socialCardService->metaTagOptions(BlogPostSocialCardProvider::TYPE, $post->getId(), $this->socialCards->source($cover)),
+            'imageAlt' => $post->getTitle(),
+        ];
     }
 }

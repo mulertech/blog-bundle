@@ -10,6 +10,7 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use MulerTech\BlogBundle\Model\ReadingTime;
 use MulerTech\FileBundle\Model\FileInterface;
+use MulerTech\SeoBundle\Model\BlogPostingSeoInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -26,7 +27,7 @@ use Symfony\Component\Uid\Uuid;
  */
 #[ORM\MappedSuperclass]
 #[ORM\HasLifecycleCallbacks]
-abstract class AbstractBlogPost
+abstract class AbstractBlogPost implements BlogPostingSeoInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -262,6 +263,32 @@ abstract class AbstractBlogPost
         $this->translationGroup = $original->getTranslationGroup();
 
         return $this;
+    }
+
+    public function getSeoTitle(): string
+    {
+        return $this->title;
+    }
+
+    public function getSeoExcerpt(): ?string
+    {
+        return $this->metaDescription;
+    }
+
+    /**
+     * Declared by each site, the only one knowing who writes: an author, the company.
+     * Search engines show it with the article.
+     */
+    abstract public function getSeoAuthorName(): string;
+
+    public function getSeoPublishedAt(): ?string
+    {
+        return $this->publishedAt?->format(\DATE_ATOM);
+    }
+
+    public function getSeoUpdatedAt(): ?string
+    {
+        return $this->updatedAt?->format(\DATE_ATOM);
     }
 
     #[ORM\PrePersist]

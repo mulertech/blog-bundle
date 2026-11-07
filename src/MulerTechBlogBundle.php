@@ -11,14 +11,22 @@ use MulerTech\BlogBundle\Doctrine\BlogPostMetadataListener;
 use MulerTech\BlogBundle\Entity\AbstractBlogPost;
 use MulerTech\BlogBundle\Form\BlogPostType;
 use MulerTech\BlogBundle\Repository\BlogPostRepository;
+use MulerTech\BlogBundle\Seo\BlogPostLlmsSectionProvider;
+use MulerTech\BlogBundle\Seo\BlogPostSitemapProvider;
+use MulerTech\BlogBundle\Seo\BlogPostSocialCardProvider;
 use MulerTech\BlogBundle\Service\BlogMediaManager;
 use MulerTech\BlogBundle\Service\BlogPostPublisher;
+use MulerTech\BlogBundle\Service\PostUrlGenerator;
 use MulerTech\BlogBundle\Service\SlugGenerator;
 use MulerTech\BlogBundle\Service\ViewCounter;
 use MulerTech\BlogBundle\Twig\BlogExtension;
+use MulerTech\CspBundle\CspNonceGenerator;
 use MulerTech\FileBundle\Service\FileManagerInterface;
+use MulerTech\SeoBundle\Service\MetaTagService;
+use MulerTech\SeoBundle\Service\SocialCardService;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\Form\FormTypeInterface;
@@ -121,6 +129,11 @@ final class MulerTechBlogBundle extends AbstractBundle
                 '$repository' => new Reference('mulertech_blog.repository'),
                 '$viewCounter' => new Reference('mulertech_blog.view_counter'),
                 '$twig' => new Reference('twig'),
+                '$metaTagService' => new Reference(MetaTagService::class),
+                '$socialCardService' => new Reference(SocialCardService::class),
+                '$socialCards' => new Reference('mulertech_blog.seo.social_card_provider'),
+                '$urls' => new Reference('mulertech_blog.post_url_generator'),
+                '$translator' => new Reference('translator'),
                 '$publicLayout' => $config['public_layout'],
             ])
             ->tag('controller.service_arguments')
@@ -134,9 +147,42 @@ final class MulerTechBlogBundle extends AbstractBundle
             ]);
         $services->alias(BlogMediaManager::class, 'mulertech_blog.media_manager');
 
+        $services->set('mulertech_blog.post_url_generator', PostUrlGenerator::class)
+            ->args([
+                '$urlGenerator' => new Reference('router'),
+                '$locales' => $config['locales'],
+            ]);
+        $services->alias(PostUrlGenerator::class, 'mulertech_blog.post_url_generator');
+
         $services->set('mulertech_blog.twig_extension', BlogExtension::class)
-            ->args(['$urlGenerator' => new Reference('router')])
+            ->args([
+                '$urlGenerator' => new Reference('router'),
+                '$postUrls' => new Reference('mulertech_blog.post_url_generator'),
+                '$nonceGenerator' => new Reference(CspNonceGenerator::class, ContainerInterface::IGNORE_ON_INVALID_REFERENCE),
+            ])
             ->tag('twig.extension');
+
+        $services->set('mulertech_blog.seo.social_card_provider', BlogPostSocialCardProvider::class)
+            ->args([
+                '$repository' => new Reference('mulertech_blog.repository'),
+                '$fileManager' => new Reference(FileManagerInterface::class),
+            ])
+            ->tag('mulertech_seo.social_card_source_provider');
+
+        $services->set('mulertech_blog.seo.sitemap_provider', BlogPostSitemapProvider::class)
+            ->args([
+                '$repository' => new Reference('mulertech_blog.repository'),
+                '$urls' => new Reference('mulertech_blog.post_url_generator'),
+            ])
+            ->tag('mulertech_seo.sitemap_url_provider');
+
+        $services->set('mulertech_blog.seo.llms_section_provider', BlogPostLlmsSectionProvider::class)
+            ->args([
+                '$repository' => new Reference('mulertech_blog.repository'),
+                '$urls' => new Reference('mulertech_blog.post_url_generator'),
+                '$translator' => new Reference('translator'),
+            ])
+            ->tag('mulertech_seo.llms_section_provider');
 
         $services->set('mulertech_blog.controller.admin', BlogAdminController::class)
             ->args([

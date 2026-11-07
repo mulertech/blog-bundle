@@ -6,11 +6,14 @@ namespace MulerTech\BlogBundle\Tests\Twig;
 
 use MulerTech\BlogBundle\Tests\DatabaseTestCase;
 use MulerTech\BlogBundle\Tests\Fixtures\Entity\File;
+use MulerTech\BlogBundle\Service\PostUrlGenerator;
 use MulerTech\BlogBundle\Twig\BlogExtension;
+use MulerTech\CspBundle\CspNonceGenerator;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\Routing\Generator\UrlGenerator;
 use Symfony\Component\Routing\Loader\YamlFileLoader;
 use Symfony\Component\Routing\RequestContext;
+use Twig\TwigFunction;
 
 final class BlogExtensionTest extends DatabaseTestCase
 {
@@ -42,15 +45,32 @@ final class BlogExtensionTest extends DatabaseTestCase
         self::assertSame('Voir ![image](blog-file:999).', $this->extension()->content($post));
     }
 
-    public function testTheFilterIsNamedForTheTemplates(): void
+    public function testTheTemplatesReachTheFilterAndFunctionsByName(): void
     {
         self::assertSame('mulertech_blog_content', $this->extension()->getFilters()[0]->getName());
+        self::assertSame(['mulertech_blog_post_url', 'mulertech_blog_csp_nonce'], array_map(
+            static fn (TwigFunction $function): string => $function->getName(),
+            $this->extension()->getFunctions(),
+        ));
     }
 
-    private function extension(): BlogExtension
+    /**
+     * With csp-bundle, the structured data script carries the nonce the site's policy
+     * expects; without it, none.
+     */
+    public function testTheNonceComesFromCspBundleWhenTheSiteHasIt(): void
+    {
+        $generator = new CspNonceGenerator();
+
+        self::assertSame($generator->getNonce('main'), $this->extension($generator)->cspNonce());
+        self::assertNull($this->extension()->cspNonce());
+    }
+
+    private function extension(?CspNonceGenerator $nonceGenerator = null): BlogExtension
     {
         $routes = new YamlFileLoader(new FileLocator(\dirname(__DIR__).'/Fixtures/config'))->load('routes.yaml');
+        $urlGenerator = new UrlGenerator($routes, new RequestContext(parameters: ['_locale' => 'fr']));
 
-        return new BlogExtension(new UrlGenerator($routes, new RequestContext(parameters: ['_locale' => 'fr'])));
+        return new BlogExtension($urlGenerator, new PostUrlGenerator($urlGenerator, ['fr', 'en']), $nonceGenerator);
     }
 }

@@ -7,3 +7,6 @@ mulertech_blog_admin:
     resource: '../../../config/admin_routes.yaml'
     prefix: '/admin/blog'
     trailing_slash_on_root: false
+
+mulertech_seo:
+    resource: '../../../vendor/mulertech/seo-bundle/config/routes.yaml'

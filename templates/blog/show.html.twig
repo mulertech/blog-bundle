@@ -3,13 +3,16 @@
 
 {% block title %}{{ post.title }}{% endblock %}
 
+{# Replaces the layout's own block: whether a layout leaves it empty or includes the
+   seo-bundle template there, the page then carries its meta tags exactly once. #}
 {% block seo_meta %}
-    {{ parent() }}
+    {% include '@MulerTechSeo/seo_meta.html.twig' with {seo: seo} only %}
     {% if translations is not empty %}
         {% for version in [post]|merge(translations) %}
-            <link rel="alternate" hreflang="{{ version.locale }}" href="{{ url('mulertech_blog_show', {slug: version.slug, _locale: version.locale}) }}">
+            <link rel="alternate" hreflang="{{ version.locale }}" href="{{ mulertech_blog_post_url(version, true) }}">
         {% endfor %}
     {% endif %}
+    {{ schema_org_json_ld('blogPosting', post, nonce=mulertech_blog_csp_nonce()) }}
 {% endblock %}
 
 {% block body %}

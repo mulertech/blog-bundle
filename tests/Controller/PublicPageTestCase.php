@@ -5,9 +5,14 @@ declare(strict_types=1);
 namespace MulerTech\BlogBundle\Tests\Controller;
 
 use MulerTech\BlogBundle\Repository\BlogPostRepository;
+use MulerTech\BlogBundle\Service\PostUrlGenerator;
 use MulerTech\BlogBundle\Tests\DatabaseTestCase;
 use MulerTech\BlogBundle\Tests\Fixtures\Entity\BlogPost;
 use MulerTech\BlogBundle\Twig\BlogExtension;
+use MulerTech\SeoBundle\Model\SeoCompanyInfoProviderInterface;
+use MulerTech\SeoBundle\Service\MetaTagService;
+use MulerTech\SeoBundle\Service\SchemaOrgService;
+use MulerTech\SeoBundle\Twig\SeoExtension;
 use Symfony\Bridge\Twig\Extension\RoutingExtension;
 use Symfony\Bridge\Twig\Extension\TranslationExtension;
 use Symfony\Component\Config\FileLocator;
@@ -35,6 +40,7 @@ abstract class PublicPageTestCase extends DatabaseTestCase
 {
     protected RequestStack $requestStack;
     protected UrlGenerator $urlGenerator;
+    protected MetaTagService $metaTagService;
     protected Environment $twig;
     protected Translator $translator;
     protected FilesystemLoader $templates;
@@ -53,29 +59,43 @@ abstract class PublicPageTestCase extends DatabaseTestCase
 
         $this->templates = new FilesystemLoader(\dirname(__DIR__).'/Fixtures/templates');
         $this->templates->addPath($root.'/templates', 'MulerTechBlog');
+        $this->templates->addPath($root.'/vendor/mulertech/seo-bundle/templates', 'MulerTechSeo');
+
+        $this->requestStack = new RequestStack();
+        $company = $this->createStub(SeoCompanyInfoProviderInterface::class);
+        $company->method('getName')->willReturn('Exemple');
+        $this->metaTagService = new MetaTagService($this->requestStack, $company, '/images/og-default.jpg');
 
         $this->urlGenerator = new UrlGenerator($routes, new RequestContext(host: 'example.com', scheme: 'https', parameters: ['_locale' => 'fr']));
         $this->twig = new Environment($this->templates, ['strict_variables' => true]);
         $this->twig->addExtension(new RoutingExtension($this->urlGenerator));
         $this->twig->addExtension(new TranslationExtension($this->translator));
-        $this->twig->addExtension(new BlogExtension($this->urlGenerator));
+        $this->twig->addExtension(new BlogExtension($this->urlGenerator, $this->postUrls()));
+        $this->twig->addExtension(new SeoExtension(new SchemaOrgService($company, $this->requestStack), $this->requestStack));
         $this->twig->addExtension(new MarkdownExtension());
         $this->twig->addRuntimeLoader(new FactoryRuntimeLoader([MarkdownRuntime::class => static fn (): MarkdownRuntime => new MarkdownRuntime(new LeagueMarkdown())]));
 
-        $this->requestStack = new RequestStack();
     }
 
     /**
      * @param array<string, string> $query
      */
-    protected function request(array $query = [], string $locale = 'fr'): Request
+    protected function request(array $query = [], string $locale = 'fr', string $path = '/fr/blog'): Request
     {
-        $request = new Request($query);
+        $request = Request::create('https://example.com'.$path, 'GET', $query);
         $request->setLocale($locale);
         $request->setSession(new Session(new MockArraySessionStorage()));
         $this->requestStack->push($request);
 
         return $request;
+    }
+
+    /**
+     * @param list<string> $locales
+     */
+    protected function postUrls(array $locales = ['fr', 'en']): PostUrlGenerator
+    {
+        return new PostUrlGenerator($this->urlGenerator, $locales);
     }
 
     protected function repository(): BlogPostRepository

@@ -3,7 +3,17 @@
     "description": "Symfony bundle for a Markdown blog: shared article model, admin, public pages, full-text search, social sharing and SEO, with one article per language",
     "type": "symfony-bundle",
     "license": "MIT",
-    "keywords": ["php", "symfony", "blog", "markdown", "doctrine", "postgresql", "full-text-search", "seo", "multilingual"],
+    "keywords": [
+        "php",
+        "symfony",
+        "blog",
+        "markdown",
+        "doctrine",
+        "postgresql",
+        "full-text-search",
+        "seo",
+        "multilingual"
+    ],
     "authors": [
         {
             "name": "Sébastien Muler",
@@ -41,6 +51,7 @@
     "require-dev": {
         "ext-pdo_sqlite": "*",
         "friendsofphp/php-cs-fixer": "^3.0",
+        "mulertech/csp-bundle": "^3.2",
         "mulertech/docker-dev": "^3.2",
         "phpstan/phpstan": "^2.0",
         "phpunit/phpunit": "^12.0",
@@ -49,6 +60,9 @@
         "symfony/css-selector": "^8.0",
         "symfony/dom-crawler": "^8.0",
         "symfony/yaml": "^8.0"
+    },
+    "suggest": {
+        "mulertech/csp-bundle": "Adds its CSP nonce to the structured data script of the article page"
     },
     "autoload": {
         "psr-4": {

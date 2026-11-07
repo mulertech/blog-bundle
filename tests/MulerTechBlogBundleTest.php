@@ -18,7 +18,10 @@ use MulerTech\BlogBundle\Tests\Fixtures\Entity\File;
 use MulerTech\BlogBundle\Tests\Fixtures\ExtendedBlogPostType;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
+use MulerTech\CspBundle\CspNonceGenerator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 
 final class MulerTechBlogBundleTest extends TestCase
@@ -141,6 +144,40 @@ final class MulerTechBlogBundleTest extends TestCase
         $this->expectExceptionMessage('mulertech_blog.post_form_type must name a form type');
 
         $this->load(['post_class' => BlogPost::class, 'post_form_type' => BlogPost::class]);
+    }
+
+    /**
+     * seo-bundle collects its providers by tag: one left untagged would leave the blog out
+     * of the sitemap, `llms.txt` or the social cards, without a word.
+     */
+    public function testTheSeoProvidersAreHandedToSeoBundle(): void
+    {
+        $container = $this->load(['post_class' => BlogPost::class]);
+
+        foreach ([
+            'mulertech_blog.seo.social_card_provider' => 'mulertech_seo.social_card_source_provider',
+            'mulertech_blog.seo.sitemap_provider' => 'mulertech_seo.sitemap_url_provider',
+            'mulertech_blog.seo.llms_section_provider' => 'mulertech_seo.llms_section_provider',
+        ] as $id => $tag) {
+            self::assertTrue($container->getDefinition($id)->hasTag($tag), $id);
+        }
+    }
+
+    /**
+     * Without csp-bundle the reference resolves to null rather than failing the container.
+     */
+    public function testTheCspNonceIsOptional(): void
+    {
+        $reference = $this->load(['post_class' => BlogPost::class])->getDefinition('mulertech_blog.twig_extension')->getArgument('$nonceGenerator');
+
+        self::assertInstanceOf(Reference::class, $reference);
+        self::assertSame(CspNonceGenerator::class, (string) $reference);
+        self::assertSame(ContainerInterface::IGNORE_ON_INVALID_REFERENCE, $reference->getInvalidBehavior());
+    }
+
+    public function testTheAddressesFollowTheDeclaredLanguages(): void
+    {
+        self::assertSame(['fr', 'en'], $this->load(['post_class' => BlogPost::class, 'locales' => ['fr', 'en']])->getDefinition('mulertech_blog.post_url_generator')->getArgument('$locales'));
     }
 
     /**

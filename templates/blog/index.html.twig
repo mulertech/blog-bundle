@@ -2,6 +2,10 @@
 
 {% block title %}{{ 'blog.title'|trans({}, 'MulerTechBlogBundle') }}{% endblock %}
 
+{% block seo_meta %}
+    {% include '@MulerTechSeo/seo_meta.html.twig' with {seo: seo} only %}
+{% endblock %}
+
 {% block body %}
     {% block mulertech_blog_header %}
         <section class="bg-gray-900 py-16 text-white">

@@ -153,6 +153,21 @@ final readonly class BlogPostRepository
     }
 
     /**
+     * Every published article, in every language, newest first.
+     *
+     * @return list<AbstractBlogPost>
+     */
+    public function findAllPublished(): array
+    {
+        return $this->results($this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from($this->postClass, 'p')
+            ->where('p.isPublished = true')
+            ->orderBy('p.publishedAt', 'DESC')
+            ->addOrderBy('p.id', 'DESC'));
+    }
+
+    /**
      * The published versions of the article in the other languages.
      *
      * @return list<AbstractBlogPost>
