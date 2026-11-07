@@ -1,0 +1,13 @@
+{% set share_url = url('mulertech_blog_show', {slug: post.slug}) %}
+<section class="mt-12 border-t border-gray-200 pt-8">
+    <h2 class="mb-4 text-xl font-bold text-gray-900">{{ 'blog.share.title'|trans({}, 'MulerTechBlogBundle') }}</h2>
+    <ul class="flex flex-wrap gap-4">
+        {% for network in [
+            {name: 'LinkedIn', href: 'https://www.linkedin.com/sharing/share-offsite/?url=' ~ share_url|url_encode},
+            {name: 'X', href: 'https://x.com/intent/post?url=' ~ share_url|url_encode ~ '&text=' ~ post.title|url_encode},
+            {name: 'Facebook', href: 'https://www.facebook.com/sharer/sharer.php?u=' ~ share_url|url_encode},
+        ] %}
+            <li><a href="{{ network.href }}" target="_blank" rel="noopener noreferrer" class="inline-flex rounded-lg bg-gray-900 px-6 py-3 font-semibold text-white transition hover:bg-gray-700">{{ network.name }}</a></li>
+        {% endfor %}
+    </ul>
+</section>

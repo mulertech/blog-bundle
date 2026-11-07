@@ -1,0 +1,18 @@
+{% import '@MulerTechBlog/blog/_icons.html.twig' as icons %}
+<form method="get" action="{{ path('mulertech_blog_index') }}" role="search" class="flex flex-col gap-4 md:flex-row">
+    <label class="relative flex-1">
+        <span class="sr-only">{{ 'blog.search.label'|trans({}, 'MulerTechBlogBundle') }}</span>
+        <input type="search" name="q" value="{{ search }}" placeholder="{{ 'blog.search.placeholder'|trans({}, 'MulerTechBlogBundle') }}"
+               class="w-full rounded-lg border border-gray-300 px-4 py-3 pl-12 focus:border-transparent focus:ring-2 focus:ring-blue-500">
+        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">{{ icons.icon('search', 'h-5 w-5') }}</span>
+    </label>
+    <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-gray-900 px-6 py-3 font-semibold text-white transition hover:bg-gray-700">
+        {{ 'blog.search.submit'|trans({}, 'MulerTechBlogBundle') }}
+    </button>
+</form>
+{% if search %}
+    <div class="mt-4 flex items-center justify-between">
+        <p class="text-gray-700">{{ 'blog.search.results'|trans({'%search%': search}, 'MulerTechBlogBundle') }}</p>
+        <a href="{{ path('mulertech_blog_index') }}" class="text-gray-900 underline hover:text-gray-600">{{ 'blog.search.clear'|trans({}, 'MulerTechBlogBundle') }}</a>
+    </div>
+{% endif %}

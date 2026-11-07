@@ -1,0 +1,16 @@
+mulertech_blog_index:
+    path: ''
+    controller: mulertech_blog.controller.blog::index
+    methods: [GET]
+
+mulertech_blog_file:
+    path: /{slug}/files/{id}
+    controller: mulertech_blog.controller.file
+    methods: [GET]
+    requirements:
+        id: '\d+'
+
+mulertech_blog_show:
+    path: /{slug}
+    controller: mulertech_blog.controller.blog::show
+    methods: [GET]

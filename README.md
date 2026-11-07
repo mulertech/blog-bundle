@@ -38,7 +38,34 @@ return [
 mulertech_blog:
     # The site's entity extending AbstractBlogPost (see below). Required.
     post_class: App\Entity\BlogPost
+    # Template the public pages extend; they fill its `title`, `seo_meta` and `body`
+    # blocks. Defaults to `base.html.twig`.
+    public_layout: base.html.twig
 ```
+
+### Routes
+
+Import the routes under the prefix of your choice:
+
+```yaml
+# config/routes/mulertech_blog.yaml
+mulertech_blog:
+    resource: '@MulerTechBlogBundle/config/routes.yaml'
+    prefix: /blog            # or /{_locale}/blog on a multilingual site
+    trailing_slash_on_root: false
+```
+
+`trailing_slash_on_root: false` keeps the list at `/blog` rather than `/blog/`.
+
+| Route | Path | Page |
+|---|---|---|
+| `mulertech_blog_index` | `/blog` | The list, `?q=` to search, `?page=` from 2 on |
+| `mulertech_blog_show` | `/blog/{slug}` | An article |
+| `mulertech_blog_file` | `/blog/{slug}/files/{id}` | The featured image or an attached file of a published article |
+
+The pages read the articles of the request's locale: a single-language site serves its default locale, a multilingual one the `{_locale}` of its prefix. A draft, an article of another language, a page number that is not a positive integer or lies beyond the last page answer 404.
+
+Files are served only through the published article they belong to, so the private storage of `mulertech/file-bundle` stays out of reach whatever id is typed. Images are shown inline, other files downloaded under their original name, both cached a day by browsers and proxies, with an ETag. A file the article points at but the disk no longer holds fails with a 500 naming the path.
 
 ## Usage
 
@@ -129,3 +156,33 @@ MIT. See [LICENSE](LICENSE).
 The search keeps the articles holding every word typed, each in the title or the content, ignoring case. A word finds the longer ones containing it (`hébergement` finds `hébergements`), and the articles holding all the words in their title come first. Accents count: `heberger` does not find `héberger`.
 
 The reading time is derived from the content each time it changes, at 200 words a minute; the address of a link or an image is not counted.
+
+### 3. Templates
+
+The pages need `twig/extra-bundle` (installed with the bundle), which provides the `markdown_to_html` filter. Their markup uses Tailwind CSS, with the default palette and the `prose` classes of `@tailwindcss/typography` for the article.
+
+Tailwind only generates the classes it reads in the files it scans, and it does not scan `vendor/`. Without this line, the pages render unstyled and nothing says why:
+
+```css
+/* assets/styles/app.css */
+@source "../../vendor/mulertech/blog-bundle/templates";
+```
+
+Each part of a page is a template of its own, so a site replaces only what differs from its own design, in `templates/bundles/MulerTechBlogBundle/`:
+
+| Template | Part |
+|---|---|
+| `blog/index.html.twig` | The list page; its `mulertech_blog_header` block holds the heading |
+| `blog/show.html.twig` | The article page |
+| `blog/_search.html.twig` | The search form |
+| `blog/_card.html.twig` | An article in the list: square thumbnail cut from the centre of the featured image, title, date, reading time, views, "Lire la suite" |
+| `blog/_sidebar.html.twig` | The recent and popular articles |
+| `blog/_pagination.html.twig` | Previous and next pages |
+| `blog/_share.html.twig` | Sharing on LinkedIn, X and Facebook |
+| `blog/_navigation.html.twig` | Previous article, back to the list, next article |
+
+The article page adds to the layout's `seo_meta` block, keeping what the layout puts there, an `hreflang` link per published version of the article when it has versions in other languages.
+
+### 4. Labels
+
+Every visible text goes through the `MulerTechBlogBundle` translation domain. The bundle ships French. A site rewords a label by redefining its key in its own `translations/MulerTechBlogBundle.fr.yaml`; the site's translations take precedence over the bundle's.

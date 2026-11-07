@@ -1,0 +1,43 @@
+{% extends layout %}
+{% import '@MulerTechBlog/blog/_icons.html.twig' as icons %}
+
+{% block title %}{{ post.title }}{% endblock %}
+
+{% block seo_meta %}
+    {{ parent() }}
+    {% if translations is not empty %}
+        {% for version in [post]|merge(translations) %}
+            <link rel="alternate" hreflang="{{ version.locale }}" href="{{ url('mulertech_blog_show', {slug: version.slug, _locale: version.locale}) }}">
+        {% endfor %}
+    {% endif %}
+{% endblock %}
+
+{% block body %}
+    <article class="bg-white">
+        {% if post.featuredImage %}
+            <div class="bg-gray-900">
+                <img src="{{ path('mulertech_blog_file', {slug: post.slug, id: post.featuredImage.id}) }}"
+                     alt="{{ 'blog.post.cover_alt'|trans({'%title%': post.title}, 'MulerTechBlogBundle') }}"
+                     class="mx-auto h-auto max-h-[36rem] w-full object-contain" fetchpriority="high" decoding="async">
+            </div>
+        {% endif %}
+
+        <div class="container mx-auto max-w-4xl px-4 py-12">
+            <header class="mb-8">
+                <h1 class="mb-6 text-3xl font-bold text-gray-900 md:text-5xl">{{ post.title }}</h1>
+                <div class="flex flex-wrap items-center gap-6 text-gray-600">
+                    <span class="inline-flex items-center gap-2">{{ icons.icon('calendar', 'h-5 w-5') }}<time datetime="{{ post.publishedAt|date('Y-m-d') }}">{{ 'blog.post.published_on'|trans({'%date%': post.publishedAt|date('blog.date_format'|trans({}, 'MulerTechBlogBundle'))}, 'MulerTechBlogBundle') }}</time></span>
+                    <span class="inline-flex items-center gap-2">{{ icons.icon('clock', 'h-5 w-5') }}{{ 'blog.post.reading_time'|trans({'%minutes%': post.readingTime}, 'MulerTechBlogBundle') }}</span>
+                    <span class="inline-flex items-center gap-2">{{ icons.icon('eye', 'h-5 w-5') }}{{ 'blog.card.views'|trans({'%count%': post.viewCount}, 'MulerTechBlogBundle') }}</span>
+                </div>
+            </header>
+
+            <div class="prose prose-lg max-w-none">
+                {{ post.content|markdown_to_html }}
+            </div>
+
+            {% include '@MulerTechBlog/blog/_share.html.twig' %}
+            {% include '@MulerTechBlog/blog/_navigation.html.twig' %}
+        </div>
+    </article>
+{% endblock %}

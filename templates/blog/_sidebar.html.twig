@@ -1,0 +1,20 @@
+{% for list in [
+    {title: 'blog.sidebar.recent', posts: recent_posts},
+    {title: 'blog.sidebar.popular', posts: popular_posts},
+] %}
+    {% if list.posts is not empty %}
+        <section class="rounded-xl bg-white p-6 shadow-lg">
+            <h2 class="mb-4 text-xl font-bold text-gray-900">{{ list.title|trans({}, 'MulerTechBlogBundle') }}</h2>
+            <ul class="space-y-4">
+                {% for post in list.posts %}
+                    <li class="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
+                        <a href="{{ path('mulertech_blog_show', {slug: post.slug}) }}" class="block hover:text-gray-600">
+                            <span class="mb-1 block font-semibold text-gray-900">{{ post.title }}</span>
+                            <time datetime="{{ post.publishedAt|date('Y-m-d') }}" class="text-sm text-gray-500">{{ post.publishedAt|date('blog.date_format'|trans({}, 'MulerTechBlogBundle')) }}</time>
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+{% endfor %}

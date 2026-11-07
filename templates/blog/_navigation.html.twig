@@ -1,0 +1,22 @@
+{% import '@MulerTechBlog/blog/_icons.html.twig' as icons %}
+<nav class="mt-12 grid grid-cols-1 items-stretch gap-4 md:grid-cols-[1fr_auto_1fr]">
+    {% if previous_post %}
+        <a href="{{ path('mulertech_blog_show', {slug: previous_post.slug}) }}" rel="prev" class="flex items-center gap-3 rounded-xl bg-white p-6 shadow-lg transition hover:shadow-2xl">
+            {{ icons.icon('arrow_left', 'h-5 w-5 shrink-0') }}
+            <span><span class="block text-sm text-gray-500">{{ 'blog.navigation.previous'|trans({}, 'MulerTechBlogBundle') }}</span><span class="font-semibold text-gray-900">{{ previous_post.title }}</span></span>
+        </a>
+    {% else %}
+        <span></span>
+    {% endif %}
+    <a href="{{ path('mulertech_blog_index') }}" class="flex flex-col items-center justify-center rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-200">
+        {{ icons.icon('back', 'mb-1 h-5 w-5') }}{{ 'blog.navigation.back'|trans({}, 'MulerTechBlogBundle') }}
+    </a>
+    {% if next_post %}
+        <a href="{{ path('mulertech_blog_show', {slug: next_post.slug}) }}" rel="next" class="flex items-center justify-end gap-3 rounded-xl bg-white p-6 text-right shadow-lg transition hover:shadow-2xl">
+            <span><span class="block text-sm text-gray-500">{{ 'blog.navigation.next'|trans({}, 'MulerTechBlogBundle') }}</span><span class="font-semibold text-gray-900">{{ next_post.title }}</span></span>
+            {{ icons.icon('arrow_right', 'h-5 w-5 shrink-0') }}
+        </a>
+    {% else %}
+        <span></span>
+    {% endif %}
+</nav>

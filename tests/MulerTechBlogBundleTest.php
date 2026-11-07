@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace MulerTech\BlogBundle\Tests;
 
+use MulerTech\BlogBundle\Controller\BlogController;
+use MulerTech\BlogBundle\Controller\BlogFileController;
 use MulerTech\BlogBundle\Doctrine\BlogPostMetadataListener;
 use MulerTech\BlogBundle\MulerTechBlogBundle;
 use MulerTech\BlogBundle\Repository\BlogPostRepository;
@@ -66,6 +68,24 @@ final class MulerTechBlogBundleTest extends TestCase
         $this->expectExceptionMessage('mulertech_blog.post_class must name the site\'s entity extending MulerTech\BlogBundle\Entity\AbstractBlogPost');
 
         $this->load(['post_class' => File::class]);
+    }
+
+    public function testThePublicPagesExtendTheSiteBaseLayoutUnlessToldOtherwise(): void
+    {
+        self::assertSame('base.html.twig', $this->load(['post_class' => BlogPost::class])->getDefinition('mulertech_blog.controller.blog')->getArgument('$publicLayout'));
+        self::assertSame('layouts/public.html.twig', $this->load(['post_class' => BlogPost::class, 'public_layout' => 'layouts/public.html.twig'])->getDefinition('mulertech_blog.controller.blog')->getArgument('$publicLayout'));
+    }
+
+    public function testTheControllersAreReachableByTheRoutes(): void
+    {
+        $container = $this->load(['post_class' => BlogPost::class]);
+
+        foreach (['mulertech_blog.controller.blog' => BlogController::class, 'mulertech_blog.controller.file' => BlogFileController::class] as $id => $class) {
+            $definition = $container->getDefinition($id);
+            self::assertSame($class, $definition->getClass());
+            self::assertTrue($definition->isPublic(), $id);
+            self::assertTrue($definition->hasTag('controller.service_arguments'), $id);
+        }
     }
 
     /**

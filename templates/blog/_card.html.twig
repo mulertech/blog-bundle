@@ -1,0 +1,22 @@
+{% import '@MulerTechBlog/blog/_icons.html.twig' as icons %}
+<article class="overflow-hidden rounded-xl bg-white shadow-lg transition hover:-translate-y-1 hover:shadow-2xl">
+    <a href="{{ path('mulertech_blog_show', {slug: post.slug}) }}" class="block aspect-square bg-gray-200" tabindex="-1" aria-hidden="true">
+        {% if post.featuredImage %}
+            <img src="{{ path('mulertech_blog_file', {slug: post.slug, id: post.featuredImage.id}) }}" alt="" class="h-full w-full object-cover object-center"
+                 loading="{{ eager ?? false ? 'eager' : 'lazy' }}" decoding="async"{% if eager ?? false %} fetchpriority="high"{% endif %}>
+        {% endif %}
+    </a>
+    <div class="p-6">
+        <h2 class="mb-3 text-xl font-bold text-gray-900">
+            <a href="{{ path('mulertech_blog_show', {slug: post.slug}) }}" class="hover:text-gray-600">{{ post.title }}</a>
+        </h2>
+        <div class="mb-4 flex flex-wrap items-center gap-4 text-sm text-gray-500">
+            <span class="inline-flex items-center gap-1">{{ icons.icon('calendar', 'h-4 w-4') }}<time datetime="{{ post.publishedAt|date('Y-m-d') }}">{{ post.publishedAt|date('blog.date_format'|trans({}, 'MulerTechBlogBundle')) }}</time></span>
+            <span class="inline-flex items-center gap-1">{{ icons.icon('clock', 'h-4 w-4') }}{{ 'blog.card.reading_time'|trans({'%minutes%': post.readingTime}, 'MulerTechBlogBundle') }}</span>
+            <span class="inline-flex items-center gap-1">{{ icons.icon('eye', 'h-4 w-4') }}{{ 'blog.card.views'|trans({'%count%': post.viewCount}, 'MulerTechBlogBundle') }}</span>
+        </div>
+        <a href="{{ path('mulertech_blog_show', {slug: post.slug}) }}" class="inline-flex items-center gap-1 text-sm font-semibold text-gray-900 hover:text-gray-600">
+            {{ 'blog.card.read_more'|trans({}, 'MulerTechBlogBundle') }}<span class="sr-only"> : {{ post.title }}</span>{{ icons.icon('arrow_right', 'h-4 w-4') }}
+        </a>
+    </div>
+</article>

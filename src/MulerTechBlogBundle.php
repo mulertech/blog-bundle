@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace MulerTech\BlogBundle;
 
+use MulerTech\BlogBundle\Controller\BlogController;
+use MulerTech\BlogBundle\Controller\BlogFileController;
 use MulerTech\BlogBundle\Doctrine\BlogPostMetadataListener;
 use MulerTech\BlogBundle\Entity\AbstractBlogPost;
 use MulerTech\BlogBundle\Repository\BlogPostRepository;
 use MulerTech\BlogBundle\Service\BlogPostPublisher;
 use MulerTech\BlogBundle\Service\SlugGenerator;
 use MulerTech\BlogBundle\Service\ViewCounter;
+use MulerTech\FileBundle\Service\FileManagerInterface;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
@@ -32,6 +35,11 @@ final class MulerTechBlogBundle extends AbstractBundle
                         ->ifTrue(static fn (mixed $class): bool => !\is_string($class) || !is_subclass_of($class, AbstractBlogPost::class))
                         ->thenInvalid('mulertech_blog.post_class must name the site\'s entity extending '.AbstractBlogPost::class.', got %s.')
                     ->end()
+                ->end()
+                ->scalarNode('public_layout')
+                    ->defaultValue('base.html.twig')
+                    ->cannotBeEmpty()
+                    ->info('Template the public pages extend. They fill its title, seo_meta and body blocks')
                 ->end()
             ->end();
     }
@@ -70,5 +78,23 @@ final class MulerTechBlogBundle extends AbstractBundle
                 '$requestStack' => new Reference('request_stack'),
             ]);
         $services->alias(ViewCounter::class, 'mulertech_blog.view_counter');
+
+        $services->set('mulertech_blog.controller.blog', BlogController::class)
+            ->args([
+                '$repository' => new Reference('mulertech_blog.repository'),
+                '$viewCounter' => new Reference('mulertech_blog.view_counter'),
+                '$twig' => new Reference('twig'),
+                '$publicLayout' => $config['public_layout'],
+            ])
+            ->tag('controller.service_arguments')
+            ->public();
+
+        $services->set('mulertech_blog.controller.file', BlogFileController::class)
+            ->args([
+                '$repository' => new Reference('mulertech_blog.repository'),
+                '$fileManager' => new Reference(FileManagerInterface::class),
+            ])
+            ->tag('controller.service_arguments')
+            ->public();
     }
 }

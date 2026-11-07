@@ -1,0 +1,33 @@
+blog:
+    title: Blog
+    date_format: d/m/Y
+    search:
+        label: Rechercher un article
+        placeholder: Rechercher un article…
+        submit: Rechercher
+        results: Résultats pour « %search% »
+        clear: Effacer
+    empty: Aucun article trouvé.
+    show_all: Voir tous les articles
+    card:
+        read_more: Lire la suite
+        reading_time: '%minutes% min'
+        views: '{0}Aucune vue|{1}1 vue|]1,Inf[%count% vues'
+    sidebar:
+        recent: Articles récents
+        popular: Articles populaires
+    pagination:
+        label: Pagination
+        previous: Précédent
+        next: Suivant
+        current: Page %page% sur %count%
+    post:
+        cover_alt: 'Image de couverture : %title%'
+        published_on: Publié le %date%
+        reading_time: '%minutes% min de lecture'
+    share:
+        title: Partager cet article
+    navigation:
+        previous: Article précédent
+        next: Article suivant
+        back: Retour à la liste

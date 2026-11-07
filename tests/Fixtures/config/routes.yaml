@@ -1,0 +1,4 @@
+mulertech_blog:
+    resource: '../../../config/routes.yaml'
+    prefix: '/{_locale}/blog'
+    trailing_slash_on_root: false
