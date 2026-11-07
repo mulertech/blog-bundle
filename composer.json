@@ -1,0 +1,46 @@
+{
+    "name": "mulertech/blog-bundle",
+    "description": "Symfony bundle for a Markdown blog: shared article model, admin, public pages, full-text search, social sharing and SEO, with one article per language",
+    "type": "symfony-bundle",
+    "license": "MIT",
+    "keywords": ["php", "symfony", "blog", "markdown", "doctrine", "postgresql", "full-text-search", "seo", "multilingual"],
+    "authors": [
+        {
+            "name": "Sébastien Muler",
+            "email": "sebastien.muler@mulertech.net"
+        }
+    ],
+    "require": {
+        "php": "^8.4",
+        "doctrine/dbal": "^4.0",
+        "doctrine/orm": "^3.0",
+        "mulertech/file-bundle": "^1.1",
+        "mulertech/seo-bundle": "^1.7",
+        "symfony/config": "^8.0",
+        "symfony/dependency-injection": "^8.0",
+        "symfony/http-kernel": "^8.0",
+        "symfony/translation": "^8.0",
+        "twig/twig": "^3.0"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.0",
+        "mulertech/docker-dev": "^3.2",
+        "phpstan/phpstan": "^2.0",
+        "phpunit/phpunit": "^12.0",
+        "roave/security-advisories": "dev-latest"
+    },
+    "autoload": {
+        "psr-4": {
+            "MulerTech\\BlogBundle\\": "./src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "MulerTech\\BlogBundle\\Tests\\": "./tests"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable"
+}

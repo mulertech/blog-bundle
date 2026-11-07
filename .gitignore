@@ -1,0 +1,8 @@
+.idea
+.phpunit*
+vendor
+.php-cs-fixer.cache
+clover.xml
+composer.lock
+.mtdocker/
+.env.test.local
