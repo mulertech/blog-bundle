@@ -20,6 +20,7 @@ final readonly class BlogPostRepository
 {
     public const int PAGE_SIZE = 12;
     public const int SIDEBAR_SIZE = 5;
+    public const int ADMIN_PAGE_SIZE = 20;
 
     /**
      * Escapes the wildcards a visitor may type, so `100%` looks for "100%" and not for
@@ -64,7 +65,7 @@ final readonly class BlogPostRepository
 
             foreach ($words as $index => $word) {
                 $parameter = 'word'.$index;
-                $query->setParameter($parameter, '%'.strtr($word, [self::LIKE_ESCAPE => self::LIKE_ESCAPE.self::LIKE_ESCAPE, '%' => self::LIKE_ESCAPE.'%', '_' => self::LIKE_ESCAPE.'_']).'%');
+                $query->setParameter($parameter, $this->containing($word));
                 $query->andWhere(sprintf("LOWER(p.title) LIKE :%1\$s ESCAPE '%2\$s' OR LOWER(p.content) LIKE :%1\$s ESCAPE '%2\$s'", $parameter, self::LIKE_ESCAPE));
                 $inTitle[] = sprintf("LOWER(p.title) LIKE :%s ESCAPE '%s'", $parameter, self::LIKE_ESCAPE);
             }
@@ -78,12 +79,40 @@ final readonly class BlogPostRepository
             ->setFirstResult(($page - 1) * $size)
             ->setMaxResults($size);
 
-        $paginator = new Paginator($query, fetchJoinCollection: false);
+        return $this->page($query, $page, $size);
+    }
 
-        return new Page(array_values(array_filter(
-            iterator_to_array($paginator),
-            static fn (mixed $post): bool => $post instanceof AbstractBlogPost,
-        )), $page, $size, \count($paginator));
+    /**
+     * Every article, drafts and every language included, the latest created first. With
+     * `$search`, only those whose title holds it, ignoring case.
+     *
+     * @param positive-int $page
+     * @param positive-int $size
+     */
+    public function paginateAll(int $page, ?string $search = null, int $size = self::ADMIN_PAGE_SIZE): Page
+    {
+        $query = $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from($this->postClass, 'p')
+            ->orderBy('p.createdAt', 'DESC')
+            ->addOrderBy('p.id', 'DESC')
+            ->setFirstResult(($page - 1) * $size)
+            ->setMaxResults($size);
+        $search = null === $search ? '' : mb_strtolower(trim($search));
+
+        if ('' !== $search) {
+            $query->where(sprintf("LOWER(p.title) LIKE :search ESCAPE '%s'", self::LIKE_ESCAPE))
+                ->setParameter('search', $this->containing($search));
+        }
+
+        return $this->page($query, $page, $size);
+    }
+
+    public function find(int $id): ?AbstractBlogPost
+    {
+        $post = $this->entityManager->find($this->postClass, $id);
+
+        return $post instanceof AbstractBlogPost ? $post : null;
     }
 
     /**
@@ -178,6 +207,25 @@ final readonly class BlogPostRepository
             ->getOneOrNullResult();
 
         return $neighbour instanceof AbstractBlogPost ? $neighbour : null;
+    }
+
+    /**
+     * @param positive-int $number
+     * @param positive-int $size
+     */
+    private function page(QueryBuilder $query, int $number, int $size): Page
+    {
+        $paginator = new Paginator($query, fetchJoinCollection: false);
+
+        return new Page(array_values(array_filter(
+            iterator_to_array($paginator),
+            static fn (mixed $post): bool => $post instanceof AbstractBlogPost,
+        )), $number, $size, \count($paginator));
+    }
+
+    private function containing(string $text): string
+    {
+        return '%'.strtr($text, [self::LIKE_ESCAPE => self::LIKE_ESCAPE.self::LIKE_ESCAPE, '%' => self::LIKE_ESCAPE.'%', '_' => self::LIKE_ESCAPE.'_']).'%';
     }
 
     private function published(string $locale): QueryBuilder

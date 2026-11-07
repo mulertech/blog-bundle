@@ -1,0 +1,12 @@
+mulertech_blog:
+    title:
+        blank: Le titre est obligatoire.
+    content:
+        blank: Le contenu est obligatoire.
+    slug:
+        format: Le slug ne contient que des lettres minuscules, des chiffres et des tirets.
+        taken: 'Le slug « %slug% » est déjà pris dans cette langue.'
+    cover:
+        type: 'L''image à la une doit être au format JPEG, PNG, WEBP ou GIF.'
+        wrong_size: 'L''image à la une doit mesurer exactement {{ expected }} px, celle-ci mesure {{ actual }} px.'
+        unreadable: 'L''image envoyée ne peut pas être lue : l''image à la une doit être une image JPEG, PNG, WEBP ou GIF de {{ expected }} px.'

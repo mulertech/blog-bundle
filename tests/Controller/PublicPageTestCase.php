@@ -7,6 +7,7 @@ namespace MulerTech\BlogBundle\Tests\Controller;
 use MulerTech\BlogBundle\Repository\BlogPostRepository;
 use MulerTech\BlogBundle\Tests\DatabaseTestCase;
 use MulerTech\BlogBundle\Tests\Fixtures\Entity\BlogPost;
+use MulerTech\BlogBundle\Twig\BlogExtension;
 use Symfony\Bridge\Twig\Extension\RoutingExtension;
 use Symfony\Bridge\Twig\Extension\TranslationExtension;
 use Symfony\Component\Config\FileLocator;
@@ -33,7 +34,10 @@ use Twig\RuntimeLoader\FactoryRuntimeLoader;
 abstract class PublicPageTestCase extends DatabaseTestCase
 {
     protected RequestStack $requestStack;
+    protected UrlGenerator $urlGenerator;
     protected Environment $twig;
+    protected Translator $translator;
+    protected FilesystemLoader $templates;
 
     protected function setUp(): void
     {
@@ -42,16 +46,19 @@ abstract class PublicPageTestCase extends DatabaseTestCase
         $root = \dirname(__DIR__, 2);
         $routes = new YamlFileLoader(new FileLocator(\dirname(__DIR__).'/Fixtures/config'))->load('routes.yaml');
 
-        $translator = new Translator('fr');
-        $translator->addLoader('yaml', new TranslationYamlLoader());
-        $translator->addResource('yaml', $root.'/translations/MulerTechBlogBundle.fr.yaml', 'fr', 'MulerTechBlogBundle');
+        $this->translator = new Translator('fr');
+        $this->translator->addLoader('yaml', new TranslationYamlLoader());
+        $this->translator->addResource('yaml', $root.'/translations/MulerTechBlogBundle.fr.yaml', 'fr', 'MulerTechBlogBundle');
+        $this->translator->addResource('yaml', $root.'/translations/validators.fr.yaml', 'fr', 'validators');
 
-        $loader = new FilesystemLoader(\dirname(__DIR__).'/Fixtures/templates');
-        $loader->addPath($root.'/templates', 'MulerTechBlog');
+        $this->templates = new FilesystemLoader(\dirname(__DIR__).'/Fixtures/templates');
+        $this->templates->addPath($root.'/templates', 'MulerTechBlog');
 
-        $this->twig = new Environment($loader, ['strict_variables' => true]);
-        $this->twig->addExtension(new RoutingExtension(new UrlGenerator($routes, new RequestContext(host: 'example.com', scheme: 'https', parameters: ['_locale' => 'fr']))));
-        $this->twig->addExtension(new TranslationExtension($translator));
+        $this->urlGenerator = new UrlGenerator($routes, new RequestContext(host: 'example.com', scheme: 'https', parameters: ['_locale' => 'fr']));
+        $this->twig = new Environment($this->templates, ['strict_variables' => true]);
+        $this->twig->addExtension(new RoutingExtension($this->urlGenerator));
+        $this->twig->addExtension(new TranslationExtension($this->translator));
+        $this->twig->addExtension(new BlogExtension($this->urlGenerator));
         $this->twig->addExtension(new MarkdownExtension());
         $this->twig->addRuntimeLoader(new FactoryRuntimeLoader([MarkdownRuntime::class => static fn (): MarkdownRuntime => new MarkdownRuntime(new LeagueMarkdown())]));
 

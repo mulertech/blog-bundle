@@ -2,3 +2,8 @@ mulertech_blog:
     resource: '../../../config/routes.yaml'
     prefix: '/{_locale}/blog'
     trailing_slash_on_root: false
+
+mulertech_blog_admin:
+    resource: '../../../config/admin_routes.yaml'
+    prefix: '/admin/blog'
+    trailing_slash_on_root: false

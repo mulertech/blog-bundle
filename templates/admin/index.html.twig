@@ -1,0 +1,60 @@
+{% extends layout %}
+
+{% block title %}{{ 'admin.title'|trans({}, 'MulerTechBlogBundle') }}{% endblock %}
+
+{% block body %}
+    <div class="container mx-auto max-w-6xl px-4 py-8">
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <h1 class="text-3xl font-bold text-gray-900">{{ 'admin.title'|trans({}, 'MulerTechBlogBundle') }}</h1>
+            <a href="{{ path('mulertech_blog_admin_new') }}" class="rounded-lg bg-gray-900 px-4 py-2 font-semibold text-white hover:bg-gray-700">{{ 'admin.new'|trans({}, 'MulerTechBlogBundle') }}</a>
+        </div>
+
+        <form method="get" action="{{ path('mulertech_blog_admin_index') }}" role="search" class="mb-6 flex gap-2">
+            <label class="flex-1">
+                <span class="sr-only">{{ 'admin.search'|trans({}, 'MulerTechBlogBundle') }}</span>
+                <input type="search" name="q" value="{{ search }}" placeholder="{{ 'admin.search'|trans({}, 'MulerTechBlogBundle') }}" class="w-full rounded-lg border border-gray-300 px-4 py-2">
+            </label>
+            <button type="submit" class="rounded-lg bg-gray-100 px-4 py-2 font-semibold text-gray-900 hover:bg-gray-200">{{ 'blog.search.submit'|trans({}, 'MulerTechBlogBundle') }}</button>
+        </form>
+
+        {% if page.items is empty %}
+            <p class="py-12 text-center text-gray-600">{{ 'admin.empty'|trans({}, 'MulerTechBlogBundle') }}</p>
+        {% else %}
+            <table class="w-full overflow-hidden rounded-xl bg-white shadow">
+                <thead class="bg-gray-50 text-left text-sm text-gray-600">
+                    <tr>
+                        <th class="px-4 py-3">{{ 'admin.form.title'|trans({}, 'MulerTechBlogBundle') }}</th>
+                        {% if locales|length > 1 %}<th class="px-4 py-3">{{ 'admin.form.locale'|trans({}, 'MulerTechBlogBundle') }}</th>{% endif %}
+                        <th class="px-4 py-3">{{ 'admin.status'|trans({}, 'MulerTechBlogBundle') }}</th>
+                        <th class="px-4 py-3">{{ 'admin.views'|trans({}, 'MulerTechBlogBundle') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for post in page.items %}
+                        <tr class="border-t border-gray-100">
+                            <td class="px-4 py-3"><a href="{{ path('mulertech_blog_admin_edit', {id: post.id}) }}" class="font-semibold text-gray-900 hover:underline">{{ post.title }}</a></td>
+                            {% if locales|length > 1 %}<td class="px-4 py-3 uppercase">{{ post.locale }}</td>{% endif %}
+                            <td class="px-4 py-3">
+                                {% if post.published %}
+                                    {{ 'admin.published_on'|trans({'%date%': post.publishedAt|date('blog.date_format'|trans({}, 'MulerTechBlogBundle'))}, 'MulerTechBlogBundle') }}
+                                {% else %}
+                                    {{ 'admin.draft'|trans({}, 'MulerTechBlogBundle') }}
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3">{{ post.viewCount }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if page.pageCount > 1 %}
+                {% set query = search ? {q: search} : {} %}
+                <nav aria-label="{{ 'blog.pagination.label'|trans({}, 'MulerTechBlogBundle') }}" class="mt-6 flex items-center justify-between">
+                    {% if page.hasPrevious %}<a href="{{ path('mulertech_blog_admin_index', query|merge(page.number > 2 ? {page: page.number - 1} : {})) }}" rel="prev">{{ 'blog.pagination.previous'|trans({}, 'MulerTechBlogBundle') }}</a>{% else %}<span></span>{% endif %}
+                    <span>{{ 'blog.pagination.current'|trans({'%page%': page.number, '%count%': page.pageCount}, 'MulerTechBlogBundle') }}</span>
+                    {% if page.hasNext %}<a href="{{ path('mulertech_blog_admin_index', query|merge({page: page.number + 1})) }}" rel="next">{{ 'blog.pagination.next'|trans({}, 'MulerTechBlogBundle') }}</a>{% else %}<span></span>{% endif %}
+                </nav>
+            {% endif %}
+        {% endif %}
+    </div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends layout %}
+
+{% block title %}{{ (post.id ? 'admin.edit' : 'admin.new')|trans({}, 'MulerTechBlogBundle') }}{% endblock %}
+
+{% block body %}
+    <div class="container mx-auto max-w-5xl px-4 py-8">
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <h1 class="text-3xl font-bold text-gray-900">{{ (post.id ? 'admin.edit' : 'admin.new')|trans({}, 'MulerTechBlogBundle') }}</h1>
+            <a href="{{ path('mulertech_blog_admin_index') }}" class="text-gray-900 underline">{{ 'admin.back'|trans({}, 'MulerTechBlogBundle') }}</a>
+        </div>
+
+        {% if post.id %}
+            {% include '@MulerTechBlog/admin/_actions.html.twig' %}
+        {% endif %}
+
+        {% include '@MulerTechBlog/admin/_form.html.twig' %}
+
+        {% if post.id %}
+            {% include '@MulerTechBlog/admin/_files.html.twig' %}
+        {% endif %}
+    </div>
+
+    {% block mulertech_blog_admin_javascripts %}
+        <script type="module" src="{{ asset('@mulertech/blog-bundle/admin.js') }}"></script>
+    {% endblock %}
+{% endblock %}

@@ -50,6 +50,7 @@ final class BlogPostMetadataListenerTest extends TestCase
             'updatedAt' => 'updated_at',
             'locale' => 'locale',
             'translationGroup' => 'translation_group',
+            'excerpt' => 'excerpt',
         ], array_combine($metadata->getFieldNames(), array_map($metadata->getColumnName(...), $metadata->getFieldNames())));
         self::assertSame('featured_image_id', $metadata->getSingleAssociationJoinColumnName('featuredImage'));
     }

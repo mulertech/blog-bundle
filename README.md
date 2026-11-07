@@ -41,6 +41,16 @@ mulertech_blog:
     # Template the public pages extend; they fill its `title`, `seo_meta` and `body`
     # blocks. Defaults to `base.html.twig`.
     public_layout: base.html.twig
+    # Template the admin pages extend; they fill its `title` and `body` blocks and leave
+    # flash messages (`success`, `error`) to it. Defaults to `base.html.twig`.
+    admin_layout: admin/base.html.twig
+    # Role every admin action checks. Defaults to ROLE_ADMIN.
+    admin_role: ROLE_ADMIN
+    # Form of the admin, to add the site's own fields (see below).
+    post_form_type: App\Form\BlogPostType
+    # Languages the articles are written in. Defaults to the site's default locale; with
+    # more than one, the admin asks for the language of each article.
+    locales: [fr, en]
 ```
 
 ### Routes
@@ -56,6 +66,16 @@ mulertech_blog:
 ```
 
 `trailing_slash_on_root: false` keeps the list at `/blog` rather than `/blog/`.
+
+The admin routes go under the site's admin prefix:
+
+```yaml
+# config/routes/mulertech_blog.yaml
+mulertech_blog_admin:
+    resource: '@MulerTechBlogBundle/config/admin_routes.yaml'
+    prefix: /admin/blog
+    trailing_slash_on_root: false
+```
 
 | Route | Path | Page |
 |---|---|---|
@@ -186,3 +206,56 @@ The article page adds to the layout's `seo_meta` block, keeping what the layout 
 ### 4. Labels
 
 Every visible text goes through the `MulerTechBlogBundle` translation domain. The bundle ships French. A site rewords a label by redefining its key in its own `translations/MulerTechBlogBundle.fr.yaml`; the site's translations take precedence over the bundle's.
+
+### 5. Administration
+
+The admin lists every article, drafts and every language included, creates, edits, publishes, unpublishes and deletes them, and manages their featured image and attached files.
+
+Every admin action checks `admin_role` itself, whatever the firewall says, and every change requires a CSRF token. Keep the admin prefix behind the site's firewall all the same, so that a visitor is sent to the login page rather than refused.
+
+Files are stored through `mulertech/file-bundle` on behalf of the logged-in user, which must implement `MulerTech\FileBundle\Model\FileUploaderInterface`; the article is passed as the upload context, so the site's directory strategy can file the blog's media apart. A file belongs to one article: removing it from the article, or deleting the article, deletes it from the storage.
+
+| Feature | Behaviour |
+|---|---|
+| Slug | Built from the title when left blank; one typed by hand must be free in the article's language |
+| Featured image | Stored at exactly 1200×675 px (16:9) as WebP. Another size opens a cropper in the browser; a cover of another size that reaches the server anyway is refused, naming both sizes |
+| Attached files | Listed with an "insert" button that writes `![name](blog-file:12)` for an image, `[name](blog-file:12)` for a document, where the cursor stands in the content |
+| Publication | "Publier" and "Dépublier" buttons; the date of first publication is kept |
+
+The content refers to an attached file as `blog-file:<id>` rather than by its address, which carries the slug and the language prefix: correcting a slug would otherwise break every image of the article. The `mulertech_blog_content` Twig filter turns these references into addresses; the article template applies it before `markdown_to_html`.
+
+The admin script, `@mulertech/blog-bundle/admin.js`, is served by the site's AssetMapper, which the bundle registers it with. It has no inline code, so a CSP allowing `'self'` scripts lets it through, and its listeners are delegated to the document, so it keeps working on pages replaced by Turbo.
+
+To add the site's own fields, give a form type whose parent is the bundle's:
+
+```php
+namespace App\Form;
+
+use MulerTech\BlogBundle\Form\BlogPostType as BaseBlogPostType;
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\TextareaType;
+use Symfony\Component\Form\FormBuilderInterface;
+
+final class BlogPostType extends AbstractType
+{
+    public function buildForm(FormBuilderInterface $builder, array $options): void
+    {
+        $builder->add('excerpt', TextareaType::class, ['required' => false]);
+    }
+
+    public function getParent(): string
+    {
+        return BaseBlogPostType::class;
+    }
+}
+```
+
+The fields it adds are rendered after the bundle's ones; replace `admin/_form.html.twig` to lay them out otherwise.
+
+| Template | Part |
+|---|---|
+| `admin/index.html.twig` | The list |
+| `admin/edit.html.twig` | Creation and edition |
+| `admin/_actions.html.twig` | Status, publish or unpublish, delete |
+| `admin/_form.html.twig` | The form, with the cover cropper |
+| `admin/_files.html.twig` | The attached files |

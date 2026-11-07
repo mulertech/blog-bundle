@@ -1,0 +1,41 @@
+{% set cover_width = constant('MulerTech\\BlogBundle\\Validator\\CoverDimensions::WIDTH') %}
+{% set cover_height = constant('MulerTech\\BlogBundle\\Validator\\CoverDimensions::HEIGHT') %}
+{{ form_start(form, {attr: {class: 'space-y-6 rounded-xl bg-white p-6 shadow', novalidate: 'novalidate'}}) }}
+    {{ form_row(form.title) }}
+    {{ form_row(form.slug) }}
+    {% if form.locale is defined %}{{ form_row(form.locale) }}{% endif %}
+
+    <div>
+        {{ form_label(form.content) }}
+        {{ form_widget(form.content, {attr: {rows: 20, class: 'w-full font-mono text-sm', 'data-mulertech-blog-editor': ''}}) }}
+        {{ form_errors(form.content) }}
+        <p class="mt-2 text-xs text-gray-500">{{ 'admin.form.content_help'|trans({}, 'MulerTechBlogBundle') }}</p>
+    </div>
+
+    {{ form_row(form.metaDescription) }}
+
+    <div>
+        {{ form_label(form.featuredImage) }}
+        {% if post.featuredImage %}
+            <img src="{{ path('mulertech_blog_admin_file', {id: post.id, fileId: post.featuredImage.id}) }}" alt="" class="mb-3 aspect-video w-full max-w-md rounded-lg object-cover">
+        {% endif %}
+        {{ form_widget(form.featuredImage) }}
+        {{ form_errors(form.featuredImage) }}
+        <div data-cover-cropper="{{ form.featuredImage.vars.id }}" data-cover-width="{{ cover_width }}" data-cover-height="{{ cover_height }}" class="mt-3 hidden">
+            <p class="mb-2 text-xs text-gray-600">{{ 'admin.cropper.help'|trans({'%size%': cover_width ~ '×' ~ cover_height}, 'MulerTechBlogBundle') }}</p>
+            <canvas width="{{ cover_width }}" height="{{ cover_height }}" data-cover-cropper-canvas class="block aspect-video w-full cursor-move touch-none rounded-lg bg-gray-900"></canvas>
+            <label class="mt-3 flex items-center gap-3 text-sm text-gray-700">
+                {{ 'admin.cropper.zoom'|trans({}, 'MulerTechBlogBundle') }}
+                <input type="range" min="1" max="4" step="0.01" value="1" data-cover-cropper-zoom class="flex-1">
+            </label>
+            <p data-cover-cropper-warning data-cover-cropper-failure="{{ 'admin.cropper.failure'|trans({}, 'MulerTechBlogBundle') }}" class="mt-2 hidden text-xs text-red-600">{{ 'admin.cropper.too_small'|trans({'%size%': cover_width ~ '×' ~ cover_height}, 'MulerTechBlogBundle') }}</p>
+        </div>
+        <p class="mt-2 text-xs text-gray-500">{{ 'admin.form.featured_image_help'|trans({'%size%': cover_width ~ '×' ~ cover_height, '%max%': constant('MulerTech\\BlogBundle\\Form\\BlogPostType::MAX_COVER_SIZE_MB')}, 'MulerTechBlogBundle') }}</p>
+        {% if form.removeFeaturedImage is defined %}{{ form_row(form.removeFeaturedImage) }}{% endif %}
+    </div>
+
+    {# The fields a site adds through its own form type. #}
+    {{ form_rest(form) }}
+
+    <button type="submit" class="rounded-lg bg-gray-900 px-6 py-3 font-semibold text-white hover:bg-gray-700">{{ 'admin.save'|trans({}, 'MulerTechBlogBundle') }}</button>
+{{ form_end(form) }}

@@ -7,6 +7,7 @@ namespace MulerTech\BlogBundle\Tests;
 use MulerTech\BlogBundle\Controller\BlogController;
 use MulerTech\BlogBundle\Controller\BlogFileController;
 use MulerTech\BlogBundle\Doctrine\BlogPostMetadataListener;
+use MulerTech\BlogBundle\Form\BlogPostType;
 use MulerTech\BlogBundle\MulerTechBlogBundle;
 use MulerTech\BlogBundle\Repository\BlogPostRepository;
 use MulerTech\BlogBundle\Service\BlogPostPublisher;
@@ -14,9 +15,11 @@ use MulerTech\BlogBundle\Service\SlugGenerator;
 use MulerTech\BlogBundle\Service\ViewCounter;
 use MulerTech\BlogBundle\Tests\Fixtures\Entity\BlogPost;
 use MulerTech\BlogBundle\Tests\Fixtures\Entity\File;
+use MulerTech\BlogBundle\Tests\Fixtures\ExtendedBlogPostType;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 
 final class MulerTechBlogBundleTest extends TestCase
 {
@@ -86,6 +89,58 @@ final class MulerTechBlogBundleTest extends TestCase
             self::assertTrue($definition->isPublic(), $id);
             self::assertTrue($definition->hasTag('controller.service_arguments'), $id);
         }
+    }
+
+    public function testTheAdminScriptIsServedByTheSiteAssetMapper(): void
+    {
+        $container = new ContainerBuilder();
+        $extension = new MulerTechBlogBundle()->getContainerExtension();
+        self::assertInstanceOf(PrependExtensionInterface::class, $extension);
+
+        $extension->prepend($container);
+
+        self::assertSame(
+            [['asset_mapper' => ['paths' => [\dirname(__DIR__).'/assets' => '@mulertech/blog-bundle']]]],
+            $container->getExtensionConfig('framework'),
+        );
+        self::assertFileExists(\dirname(__DIR__).'/assets/admin.js');
+    }
+
+    public function testTheAdminControllerReceivesTheAdminSettings(): void
+    {
+        $definition = $this->load([
+            'post_class' => BlogPost::class,
+            'admin_layout' => 'admin/base.html.twig',
+            'admin_role' => 'ROLE_EDITOR',
+            'post_form_type' => ExtendedBlogPostType::class,
+            'locales' => ['fr', 'en'],
+        ])->getDefinition('mulertech_blog.controller.admin');
+
+        self::assertSame('admin/base.html.twig', $definition->getArgument('$adminLayout'));
+        self::assertSame('ROLE_EDITOR', $definition->getArgument('$adminRole'));
+        self::assertSame(ExtendedBlogPostType::class, $definition->getArgument('$postFormType'));
+        self::assertSame(['fr', 'en'], $definition->getArgument('$locales'));
+        self::assertTrue($definition->isPublic());
+    }
+
+    /**
+     * A single-language site declares nothing: its default locale is the language.
+     */
+    public function testTheLanguageDefaultsToTheSiteDefaultLocale(): void
+    {
+        $definition = $this->load(['post_class' => BlogPost::class])->getDefinition('mulertech_blog.controller.admin');
+
+        self::assertSame(['%kernel.default_locale%'], $definition->getArgument('$locales'));
+        self::assertSame('ROLE_ADMIN', $definition->getArgument('$adminRole'));
+        self::assertSame(BlogPostType::class, $definition->getArgument('$postFormType'));
+    }
+
+    public function testThePostFormTypeMustBeAFormType(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('mulertech_blog.post_form_type must name a form type');
+
+        $this->load(['post_class' => BlogPost::class, 'post_form_type' => BlogPost::class]);
     }
 
     /**

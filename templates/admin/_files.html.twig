@@ -1,0 +1,37 @@
+<section class="mt-8 rounded-xl bg-white p-6 shadow">
+    <h2 class="mb-4 text-xl font-bold text-gray-900">{{ 'admin.files.title'|trans({}, 'MulerTechBlogBundle') }}</h2>
+
+    {% if post.files is empty %}
+        <p class="mb-4 text-gray-600">{{ 'admin.files.empty'|trans({}, 'MulerTechBlogBundle') }}</p>
+    {% else %}
+        <ul class="mb-6 divide-y divide-gray-100">
+            {% for file in post.files %}
+                {% set image = file.mimeType starts with 'image/' %}
+                <li class="flex flex-wrap items-center gap-3 py-3">
+                    {% if image %}
+                        <img src="{{ path('mulertech_blog_admin_file', {id: post.id, fileId: file.id}) }}" alt="" class="h-12 w-12 rounded object-cover">
+                    {% endif %}
+                    <span class="mr-auto">{{ file.filename }}</span>
+                    <button type="button" class="rounded-lg bg-gray-100 px-3 py-1 text-sm font-semibold text-gray-900 hover:bg-gray-200"
+                            data-mulertech-blog-insert="{{ image ? '!' : '' }}[{{ file.filename|replace({'[': '', ']': ''}) }}]({{ constant('MulerTech\\BlogBundle\\Twig\\BlogExtension::FILE_SCHEME') }}{{ file.id }})">
+                        {{ 'admin.files.insert'|trans({}, 'MulerTechBlogBundle') }}
+                    </button>
+                    <form method="post" action="{{ path('mulertech_blog_admin_file_remove', {id: post.id, fileId: file.id}) }}" data-mulertech-blog-confirm="{{ 'admin.files.remove_confirm'|trans({'%name%': file.filename}, 'MulerTechBlogBundle') }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('mulertech_blog_files_' ~ post.id) }}">
+                        <button type="submit" class="rounded-lg px-3 py-1 text-sm font-semibold text-red-600 hover:bg-red-50">{{ 'admin.files.remove'|trans({}, 'MulerTechBlogBundle') }}</button>
+                    </form>
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <form method="post" action="{{ path('mulertech_blog_admin_file_add', {id: post.id}) }}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-3">
+        <input type="hidden" name="_token" value="{{ csrf_token('mulertech_blog_files_' ~ post.id) }}">
+        <label>
+            <span class="sr-only">{{ 'admin.files.choose'|trans({}, 'MulerTechBlogBundle') }}</span>
+            <input type="file" name="file" required>
+        </label>
+        <button type="submit" class="rounded-lg bg-gray-900 px-4 py-2 font-semibold text-white hover:bg-gray-700">{{ 'admin.files.add'|trans({}, 'MulerTechBlogBundle') }}</button>
+    </form>
+    <p class="mt-2 text-xs text-gray-500">{{ 'admin.files.unsaved_warning'|trans({}, 'MulerTechBlogBundle') }}</p>
+</section>

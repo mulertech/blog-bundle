@@ -1,0 +1,51 @@
+mulertech_blog_admin_index:
+    path: ''
+    controller: mulertech_blog.controller.admin::index
+    methods: [GET]
+
+mulertech_blog_admin_new:
+    path: /new
+    controller: mulertech_blog.controller.admin::new
+    methods: [GET, POST]
+
+mulertech_blog_admin_edit:
+    path: /{id}
+    controller: mulertech_blog.controller.admin::edit
+    methods: [GET, POST]
+    requirements: { id: '\d+' }
+
+mulertech_blog_admin_delete:
+    path: /{id}/delete
+    controller: mulertech_blog.controller.admin::delete
+    methods: [POST]
+    requirements: { id: '\d+' }
+
+mulertech_blog_admin_publish:
+    path: /{id}/publish
+    controller: mulertech_blog.controller.admin::publish
+    methods: [POST]
+    requirements: { id: '\d+' }
+
+mulertech_blog_admin_unpublish:
+    path: /{id}/unpublish
+    controller: mulertech_blog.controller.admin::unpublish
+    methods: [POST]
+    requirements: { id: '\d+' }
+
+mulertech_blog_admin_file_add:
+    path: /{id}/files
+    controller: mulertech_blog.controller.admin::addFile
+    methods: [POST]
+    requirements: { id: '\d+' }
+
+mulertech_blog_admin_file_remove:
+    path: /{id}/files/{fileId}/remove
+    controller: mulertech_blog.controller.admin::removeFile
+    methods: [POST]
+    requirements: { id: '\d+', fileId: '\d+' }
+
+mulertech_blog_admin_file:
+    path: /{id}/files/{fileId}
+    controller: mulertech_blog.controller.admin::file
+    methods: [GET]
+    requirements: { id: '\d+', fileId: '\d+' }
