@@ -14,7 +14,7 @@ Symfony bundle for a Markdown blog: shared article model, admin, public pages, f
 
 - PHP 8.4+ with the GD extension (required by `mulertech/seo-bundle` to derive social cards)
 - Symfony 8.0+
-- Doctrine ORM 3 on PostgreSQL
+- Doctrine ORM 3
 
 ## Installation
 
@@ -31,9 +31,16 @@ return [
 ];
 ```
 
-## Usage
+## Configuration
 
-The bundle's configuration lives under the `mulertech_blog` key.
+```yaml
+# config/packages/mulertech_blog.yaml
+mulertech_blog:
+    # The site's entity extending AbstractBlogPost (see below). Required.
+    post_class: App\Entity\BlogPost
+```
+
+## Usage
 
 ### 1. The blog post entity
 
@@ -95,3 +102,30 @@ One row is one article in one language. The versions of an article in several la
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+### 2. Services
+
+| Service | Role |
+|---|---|
+| `BlogPostRepository` | The queries of the blog, on the entity named by `post_class`. Every list holds published articles of one language |
+| `SlugGenerator` | `generate($post)`: the slug from the title, unique in the article's language (`bienvenue`, then `bienvenue-2`…) |
+| `BlogPostPublisher` | `publish($post)` and `unpublish($post)`, saved at once |
+| `ViewCounter` | `count($post)`: one view per article and per session, incremented in the database so simultaneous readers lose none |
+
+`BlogPostRepository`:
+
+| Method | Returns |
+|---|---|
+| `findPublishedBySlug($slug, $locale)` | The article, or null when it is unknown or a draft |
+| `paginatePublished($locale, $page, $search = null, $size = 12)` | A `Page` of articles, newest first, through Doctrine's `Paginator` |
+| `findRecent($locale, $limit = 5)` | The latest published |
+| `findPopular($locale, $limit = 5)` | The most viewed |
+| `findPrevious($post)`, `findNext($post)` | The neighbours by publication date, in the same language |
+| `findTranslations($post)` | The published versions in the other languages |
+| `isSlugTaken($slug, $locale, $exceptId = null)` | Whether the language already has the slug, drafts included |
+
+`Page` carries `items`, `number`, `size`, `totalItems`, `pageCount`, `hasPrevious()`, `hasNext()`, and `exists()`, false beyond the last page, whose address should answer 404.
+
+The search keeps the articles holding every word typed, each in the title or the content, ignoring case. A word finds the longer ones containing it (`hébergement` finds `hébergements`), and the articles holding all the words in their title come first. Accents count: `heberger` does not find `héberger`.
+
+The reading time is derived from the content each time it changes, at 200 words a minute; the address of a link or an image is not counted.

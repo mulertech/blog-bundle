@@ -106,15 +106,24 @@ final class AbstractBlogPostTest extends TestCase
             ->setSlug('heberger-un-site-en-france')
             ->setContent('# Titre')
             ->setMetaDescription('Pourquoi et comment.')
-            ->setFeaturedImage($image)
-            ->setReadingTime(4);
+            ->setFeaturedImage($image);
 
         self::assertSame('Héberger un site en France', $post->getTitle());
         self::assertSame('heberger-un-site-en-france', $post->getSlug());
         self::assertSame('# Titre', $post->getContent());
         self::assertSame('Pourquoi et comment.', $post->getMetaDescription());
         self::assertSame($image, $post->getFeaturedImage());
-        self::assertSame(4, $post->getReadingTime());
+    }
+
+    public function testTheReadingTimeFollowsTheContent(): void
+    {
+        $post = new BlogPost()->setContent(str_repeat('mot ', 401));
+
+        self::assertSame(3, $post->getReadingTime());
+
+        $post->setContent('Court.');
+
+        self::assertSame(1, $post->getReadingTime());
     }
 
     public function testAnAttachedFileIsListedOnce(): void

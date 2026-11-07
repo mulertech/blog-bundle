@@ -8,6 +8,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use MulerTech\BlogBundle\Model\ReadingTime;
 use MulerTech\FileBundle\Model\FileInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -68,7 +69,7 @@ abstract class AbstractBlogPost
     protected ?\DateTimeImmutable $publishedAt = null;
 
     /**
-     * In minutes.
+     * In minutes, derived from the content each time it changes.
      */
     #[ORM\Column(name: 'reading_time')]
     protected int $readingTime = 0;
@@ -134,6 +135,7 @@ abstract class AbstractBlogPost
     public function setContent(string $content): static
     {
         $this->content = $content;
+        $this->readingTime = ReadingTime::minutes($content);
 
         return $this;
     }
@@ -218,13 +220,6 @@ abstract class AbstractBlogPost
     public function getReadingTime(): int
     {
         return $this->readingTime;
-    }
-
-    public function setReadingTime(int $readingTime): static
-    {
-        $this->readingTime = $readingTime;
-
-        return $this;
     }
 
     public function getViewCount(): int
