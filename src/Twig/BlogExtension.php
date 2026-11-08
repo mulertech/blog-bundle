@@ -7,6 +7,8 @@ namespace MulerTech\BlogBundle\Twig;
 use MulerTech\BlogBundle\Entity\AbstractBlogPost;
 use MulerTech\BlogBundle\Service\PostUrlGenerator;
 use MulerTech\CspBundle\CspNonceGenerator;
+use MulerTech\FileBundle\Model\FileInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
@@ -17,11 +19,20 @@ final class BlogExtension extends AbstractExtension
     public const string FILE_SCHEME = 'blog-file:';
 
     /**
+     * Set on the request of an admin preview. The public file route answers only for a
+     * published article, and the admin is often signed in behind a firewall of its own
+     * that the public pages do not share: during a preview, files are addressed through
+     * the admin route instead.
+     */
+    public const string PREVIEW_ATTRIBUTE = '_mulertech_blog_preview';
+
+    /**
      * @param ?CspNonceGenerator $nonceGenerator present when the site installs mulertech/csp-bundle
      */
     public function __construct(
         private readonly UrlGeneratorInterface $urlGenerator,
         private readonly PostUrlGenerator $postUrls,
+        private readonly RequestStack $requestStack,
         private readonly ?CspNonceGenerator $nonceGenerator = null,
         private readonly string $nonceHandle = 'main',
     ) {
@@ -36,6 +47,7 @@ final class BlogExtension extends AbstractExtension
     {
         return [
             new TwigFunction('mulertech_blog_post_url', $this->postUrls->post(...)),
+            new TwigFunction('mulertech_blog_file_url', $this->fileUrl(...)),
             new TwigFunction('mulertech_blog_csp_nonce', $this->cspNonce(...)),
         ];
     }
@@ -62,10 +74,28 @@ final class BlogExtension extends AbstractExtension
         return (string) preg_replace_callback(
             '/\('.preg_quote(self::FILE_SCHEME, '/').'(\d+)\)/',
             fn (array $match): string => isset($ids[(int) $match[1]])
-                ? '('.$this->urlGenerator->generate('mulertech_blog_file', ['slug' => $post->getSlug(), 'id' => (int) $match[1]]).')'
+                ? '('.$this->fileUrlById($post, (int) $match[1]).')'
                 : $match[0],
             $post->getContent(),
         );
+    }
+
+    /**
+     * The address of a file of the article: the public one, or the admin one during a
+     * preview (see PREVIEW_ATTRIBUTE).
+     */
+    public function fileUrl(AbstractBlogPost $post, FileInterface $file): string
+    {
+        return $this->fileUrlById($post, (int) $file->getId());
+    }
+
+    private function fileUrlById(AbstractBlogPost $post, int $id): string
+    {
+        if (true === $this->requestStack->getMainRequest()?->attributes->get(self::PREVIEW_ATTRIBUTE)) {
+            return $this->urlGenerator->generate('mulertech_blog_admin_file', ['id' => $post->getId(), 'fileId' => $id]);
+        }
+
+        return $this->urlGenerator->generate('mulertech_blog_file', ['slug' => $post->getSlug(), 'id' => $id]);
     }
 
     /**

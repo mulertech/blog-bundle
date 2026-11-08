@@ -6,6 +6,7 @@
             {{ 'admin.draft'|trans({}, 'MulerTechBlogBundle') }}
         {% endif %}
     </span>
+    <a href="{{ path('mulertech_blog_admin_preview', {id: post.id}) }}" target="_blank" class="text-gray-900 underline">{{ 'admin.preview.open'|trans({}, 'MulerTechBlogBundle') }}</a>
     {% if post.published %}
         <a href="{{ mulertech_blog_post_url(post) }}" target="_blank" class="text-gray-900 underline">{{ 'admin.view'|trans({}, 'MulerTechBlogBundle') }}</a>
         <form method="post" action="{{ path('mulertech_blog_admin_unpublish', {id: post.id}) }}">

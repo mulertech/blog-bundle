@@ -9,11 +9,15 @@ use MulerTech\BlogBundle\Repository\BlogPostRepository;
 use MulerTech\BlogBundle\Seo\BlogPostSocialCardProvider;
 use MulerTech\BlogBundle\Service\PostUrlGenerator;
 use MulerTech\BlogBundle\Service\ViewCounter;
+use MulerTech\BlogBundle\Twig\BlogExtension;
 use MulerTech\SeoBundle\Service\MetaTagService;
 use MulerTech\SeoBundle\Service\SocialCardService;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Routing\RequestContextAwareInterface;
+use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Contracts\Translation\TranslatorInterface;
 use Twig\Environment;
 
@@ -32,7 +36,10 @@ final readonly class BlogController
         private BlogPostSocialCardProvider $socialCards,
         private PostUrlGenerator $urls,
         private TranslatorInterface $translator,
+        private AuthorizationCheckerInterface $authorizationChecker,
+        private RequestContextAwareInterface $router,
         private string $publicLayout,
+        private string $adminRole,
     ) {
     }
 
@@ -82,16 +89,58 @@ final readonly class BlogController
             'previous_post' => $this->repository->findPrevious($post),
             'next_post' => $this->repository->findNext($post),
             'translations' => $this->repository->findTranslations($post),
-            'seo' => $this->metaTagService->generateMetaTags([
-                'title' => $post->getTitle(),
-                'description' => $post->getMetaDescription(),
-                'type' => 'article',
-                'publishedTime' => $post->getSeoPublishedAt(),
-                'modifiedTime' => $post->getSeoUpdatedAt(),
-                'author' => $post->getSeoAuthorName(),
-                ...$this->socialCard($post),
-            ]),
+            'seo' => $this->seo($post, $this->socialCard($post)),
         ]));
+    }
+
+    /**
+     * The article as its public page will show it, drafts included, from the last saved
+     * version: the Markdown is checked before publishing. Only the admin reaches it, its
+     * route sitting under the admin prefix, and nothing is counted or indexed.
+     */
+    public function preview(Request $request, int $id): Response
+    {
+        if (!$this->authorizationChecker->isGranted($this->adminRole)) {
+            throw new AccessDeniedException(sprintf('The preview of an article requires %s.', $this->adminRole));
+        }
+
+        $post = $this->repository->find($id) ?? throw new NotFoundHttpException(sprintf('No article %d.', $id));
+
+        // The public templates link to the list and to the article in its own language.
+        $request->setLocale($post->getLocale());
+        $this->router->getContext()->setParameter('_locale', $post->getLocale());
+        $request->attributes->set(BlogExtension::PREVIEW_ATTRIBUTE, true);
+
+        $response = new Response($this->twig->render('@MulerTechBlog/admin/preview.html.twig', [
+            'layout' => $this->publicLayout,
+            'post' => $post,
+            'previous_post' => null,
+            'next_post' => null,
+            'translations' => [],
+            'seo' => $this->seo($post, []),
+        ]));
+        $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
+        $response->headers->set('Cache-Control', 'no-store, private');
+
+        return $response;
+    }
+
+    /**
+     * @param array<string, string|int> $socialCard
+     *
+     * @return array<string, mixed>
+     */
+    private function seo(AbstractBlogPost $post, array $socialCard): array
+    {
+        return $this->metaTagService->generateMetaTags([
+            'title' => $post->getTitle(),
+            'description' => $post->getMetaDescription(),
+            'type' => 'article',
+            'publishedTime' => $post->getSeoPublishedAt(),
+            'modifiedTime' => $post->getSeoUpdatedAt(),
+            'author' => $post->getSeoAuthorName(),
+            ...$socialCard,
+        ]);
     }
 
     /**

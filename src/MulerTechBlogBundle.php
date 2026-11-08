@@ -146,7 +146,10 @@ final class MulerTechBlogBundle extends AbstractBundle
                 '$socialCards' => new Reference('mulertech_blog.seo.social_card_provider'),
                 '$urls' => new Reference('mulertech_blog.post_url_generator'),
                 '$translator' => new Reference('translator'),
+                '$authorizationChecker' => new Reference('security.authorization_checker'),
+                '$router' => new Reference('router'),
                 '$publicLayout' => $config['public_layout'],
+                '$adminRole' => $config['admin_role'],
             ])
             ->tag('controller.service_arguments')
             ->public();
@@ -170,6 +173,7 @@ final class MulerTechBlogBundle extends AbstractBundle
             ->args([
                 '$urlGenerator' => new Reference('router'),
                 '$postUrls' => new Reference('mulertech_blog.post_url_generator'),
+                '$requestStack' => new Reference('request_stack'),
                 '$nonceGenerator' => new Reference(CspNonceGenerator::class, ContainerInterface::IGNORE_ON_INVALID_REFERENCE),
             ])
             ->tag('twig.extension');

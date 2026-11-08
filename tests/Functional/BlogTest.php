@@ -153,6 +153,56 @@ final class BlogTest extends FunctionalTestCase
         self::assertSame('~~texte~~', $page->filter('form dl dd')->last()->text());
     }
 
+    /**
+     * A draft is read as its public page will show it, cover and inserted image included,
+     * before anyone else can.
+     */
+    public function testADraftIsPreviewedInThePublicTemplate(): void
+    {
+        $this->client->loginUser(new Editor());
+        $form = $this->client->request('GET', '/admin/blog/new')->selectButton('Enregistrer')->form([
+            'blog_post[title]' => 'Brouillon à relire',
+            'blog_post[content]' => "## Sous-titre\n\nUn **mot** en gras.",
+        ]);
+        $form['blog_post[featuredImage]']->upload($this->image(1200, 675));
+        $this->client->submit($form);
+        $article = $this->article();
+
+        $page = $this->client->request('GET', '/admin/blog/'.$article->getId().'/preview');
+
+        self::assertResponseIsSuccessful();
+        self::assertResponseHeaderSame('X-Robots-Tag', 'noindex, nofollow');
+        self::assertSelectorTextContains('[role=status]', 'n\'est pas publié');
+        self::assertSelectorTextContains('h1', 'Brouillon à relire');
+        self::assertSelectorTextContains('article h2', 'Sous-titre');
+        self::assertSelectorTextContains('article strong', 'mot');
+        self::assertSelectorNotExists('article time', 'a draft has no publication date to show');
+        $cover = (string) $page->filter('article img')->first()->attr('src');
+        self::assertSame(sprintf('/admin/blog/%d/files/%d', $article->getId(), $article->getFeaturedImage()?->getId()), $cover);
+        $this->client->request('GET', $cover);
+        self::assertResponseIsSuccessful();
+        self::assertSame(0, $this->article()->getViewCount(), 'a preview is not a visit');
+
+        $this->client->request('GET', '/fr/blog/brouillon-a-relire');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'the draft stays offline');
+    }
+
+    public function testThePreviewIsClosedToAnonymousVisitors(): void
+    {
+        $this->client->loginUser(new Editor());
+        $form = $this->client->request('GET', '/admin/blog/new')->selectButton('Enregistrer')->form([
+            'blog_post[title]' => 'Secret',
+            'blog_post[content]' => 'Texte.',
+        ]);
+        $this->client->submit($form);
+        $id = $this->article()->getId();
+        $this->client->restart();
+
+        $this->client->request('GET', '/admin/blog/'.$id.'/preview');
+
+        self::assertFalse($this->client->getResponse()->isSuccessful());
+    }
+
     public function testTheAdminScriptIsServedByTheSiteAssetMapper(): void
     {
         $this->client->loginUser(new Editor());

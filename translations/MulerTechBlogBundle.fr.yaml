@@ -61,6 +61,11 @@ admin:
         featured_image: Image à la une
         featured_image_help: 'JPEG, PNG, WEBP ou GIF, %max% Mo au plus. Enregistrée en %size% px : toute autre taille ouvre le recadrage.'
         remove_featured_image: Supprimer l'image à la une
+    preview:
+        open: Aperçu
+        banner_draft: 'Aperçu : cet article n''est pas publié. Vous voyez sa dernière version enregistrée.'
+        banner_published: 'Aperçu de la dernière version enregistrée.'
+        back: Revenir à l'édition
     markdown:
         bold: 'Gras'
         bold_example: '**texte**'

@@ -70,7 +70,7 @@ abstract class PublicPageTestCase extends DatabaseTestCase
         $this->twig = new Environment($this->templates, ['strict_variables' => true]);
         $this->twig->addExtension(new RoutingExtension($this->urlGenerator));
         $this->twig->addExtension(new TranslationExtension($this->translator));
-        $this->twig->addExtension(new BlogExtension($this->urlGenerator, $this->postUrls()));
+        $this->twig->addExtension(new BlogExtension($this->urlGenerator, $this->postUrls(), new RequestStack()));
         $this->twig->addExtension(new SeoExtension(new SchemaOrgService($company, $this->requestStack), $this->requestStack));
         $this->twig->addExtension(new MarkdownExtension());
         $this->twig->addRuntimeLoader(new FactoryRuntimeLoader([MarkdownRuntime::class => static fn (): MarkdownRuntime => new MarkdownRuntime(new LeagueMarkdown())]));

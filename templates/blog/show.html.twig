@@ -19,7 +19,7 @@
     <article class="bg-white">
         {% if post.featuredImage %}
             <div class="bg-gray-900">
-                <img src="{{ path('mulertech_blog_file', {slug: post.slug, id: post.featuredImage.id}) }}"
+                <img src="{{ mulertech_blog_file_url(post, post.featuredImage) }}"
                      alt="{{ 'blog.post.cover_alt'|trans({'%title%': post.title}, 'MulerTechBlogBundle') }}"
                      class="mx-auto h-auto max-h-[36rem] w-full object-contain" fetchpriority="high" decoding="async">
             </div>
@@ -29,7 +29,9 @@
             <header class="mb-8">
                 <h1 class="mb-6 text-3xl font-bold text-gray-900 md:text-5xl">{{ post.title }}</h1>
                 <div class="flex flex-wrap items-center gap-6 text-gray-600">
-                    <span class="inline-flex items-center gap-2">{{ icons.icon('calendar', 'h-5 w-5') }}<time datetime="{{ post.publishedAt|date('Y-m-d') }}">{{ 'blog.post.published_on'|trans({'%date%': post.publishedAt|date('blog.date_format'|trans({}, 'MulerTechBlogBundle'))}, 'MulerTechBlogBundle') }}</time></span>
+                    {% if post.publishedAt %}
+                        <span class="inline-flex items-center gap-2">{{ icons.icon('calendar', 'h-5 w-5') }}<time datetime="{{ post.publishedAt|date('Y-m-d') }}">{{ 'blog.post.published_on'|trans({'%date%': post.publishedAt|date('blog.date_format'|trans({}, 'MulerTechBlogBundle'))}, 'MulerTechBlogBundle') }}</time></span>
+                    {% endif %}
                     <span class="inline-flex items-center gap-2">{{ icons.icon('clock', 'h-5 w-5') }}{{ 'blog.post.reading_time'|trans({'%minutes%': post.readingTime}, 'MulerTechBlogBundle') }}</span>
                     <span class="inline-flex items-center gap-2">{{ icons.icon('eye', 'h-5 w-5') }}{{ 'blog.card.views'|trans({'%count%': post.viewCount}, 'MulerTechBlogBundle') }}</span>
                 </div>

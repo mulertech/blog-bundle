@@ -205,6 +205,8 @@ Each part of a page is a template of its own, so a site replaces only what diffe
 | `blog/_share.html.twig` | Sharing on LinkedIn, X and Facebook |
 | `blog/_navigation.html.twig` | Previous article, back to the list, next article |
 
+A replaced template addresses the article's files with `mulertech_blog_file_url(post, file)` rather than `path('mulertech_blog_file', …)`: the function gives the public address, and during an admin preview the admin one. The public route answers only for a published article, and the admin is often signed in behind a firewall the public pages do not share, so a template building the public address shows a draft's images broken in the preview.
+
 Both pages replace the layout's `seo_meta` block with their own meta tags (see below): whether a layout leaves that block empty or includes the seo-bundle template there, the page carries its tags exactly once.
 
 The seo-bundle template writes no `<meta name="description">`: layouts write it themselves, each in a block named its own way, which the bundle cannot know of. A site whose layout does so fills that block in its replacement of `blog/index.html.twig` and `blog/show.html.twig`; `seo.description` holds the description, null for an article without meta description:
@@ -233,6 +235,7 @@ Files are stored through `mulertech/file-bundle` on behalf of the logged-in user
 | Attached files | Listed with an "insert" button that writes `![name](blog-file:12)` for an image, `[name](blog-file:12)` for a document, where the cursor stands in the content |
 | Attached images | A JPEG or PNG is stored as WebP, turned upright from its EXIF orientation and brought down to 1600 px wide when wider; a WebP is only brought down. A GIF keeps its animation and an SVG stays a vector: both are stored as sent, like documents. An image that cannot be decoded is refused, naming the file |
 | Publication | "Publier" and "Dépublier" buttons; the date of first publication is kept |
+| Preview | "Aperçu" opens the article in the site's public template, drafts included, from its last saved version, under a banner saying so. Its route sits under the admin prefix, so only the admin reaches it; it counts no view and sends `X-Robots-Tag: noindex` |
 
 The content refers to an attached file as `blog-file:<id>` rather than by its address, which carries the slug and the language prefix: correcting a slug would otherwise break every image of the article. The `mulertech_blog_content` Twig filter turns these references into addresses; the article template applies it before `markdown_to_html`.
 

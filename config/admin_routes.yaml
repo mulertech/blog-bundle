@@ -14,6 +14,12 @@ mulertech_blog_admin_edit:
     methods: [GET, POST]
     requirements: { id: '\d+' }
 
+mulertech_blog_admin_preview:
+    path: /{id}/preview
+    controller: mulertech_blog.controller.blog::preview
+    methods: [GET]
+    requirements: { id: '\d+' }
+
 mulertech_blog_admin_delete:
     path: /{id}/delete
     controller: mulertech_blog.controller.admin::delete

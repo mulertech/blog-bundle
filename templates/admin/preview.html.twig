@@ -1,0 +1,13 @@
+{#
+    The article in the site's public template, with a banner saying it is a preview: the
+    template is the one the site may have replaced, so the preview shows what readers will.
+#}
+{% extends '@MulerTechBlog/blog/show.html.twig' %}
+
+{% block body %}
+    <div class="bg-gray-900 px-4 py-3 text-center text-sm text-white" role="status">
+        {{ (post.published ? 'admin.preview.banner_published' : 'admin.preview.banner_draft')|trans({}, 'MulerTechBlogBundle') }}
+        <a href="{{ path('mulertech_blog_admin_edit', {id: post.id}) }}" class="ml-2 font-semibold text-white underline">{{ 'admin.preview.back'|trans({}, 'MulerTechBlogBundle') }}</a>
+    </div>
+    {{ parent() }}
+{% endblock %}

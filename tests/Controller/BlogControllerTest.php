@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace MulerTech\BlogBundle\Tests\Controller;
 
+use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use MulerTech\BlogBundle\Controller\BlogController;
 use MulerTech\BlogBundle\Seo\BlogPostSocialCardProvider;
 use MulerTech\BlogBundle\Service\ViewCounter;
@@ -348,7 +349,10 @@ final class BlogControllerTest extends PublicPageTestCase
             $socialCards,
             $this->postUrls(),
             $this->translator,
+            $this->createStub(AuthorizationCheckerInterface::class),
+            $this->urlGenerator,
             'base.html.twig',
+            'ROLE_ADMIN',
         );
     }
 

@@ -267,7 +267,8 @@ final class BlogAdminControllerTest extends PublicPageTestCase
         $page = $this->crawl($this->controller()->edit($this->request(), (int) $post->getId()));
 
         self::assertSame('Dépublier', $page->filter('form[action$="/unpublish"] button')->text());
-        self::assertSame('/fr/blog/publie', $page->filter('a[target=_blank]')->attr('href'));
+        self::assertSame('/fr/blog/publie', $page->filter('a[target=_blank]')->last()->attr('href'));
+        self::assertSame(sprintf('/admin/blog/%d/preview', $post->getId()), $page->filter('a[target=_blank]')->first()->attr('href'));
     }
 
     public function testTheCoverOfAnArticleCanBeRemoved(): void
