@@ -26,14 +26,16 @@ From a Symfony application with Doctrine, Twig and AssetMapper, in this order. E
     composer require mulertech/blog-bundle
     ```
 
-2. Set up `mulertech/file-bundle`, which stores the featured images and attached files: a file entity extending `MulerTech\FileBundle\Entity\AbstractFile`, and its `storage_directory` and `file_class`, as its README says. The logged-in user who writes articles must implement `MulerTech\FileBundle\Model\FileUploaderInterface`.
+    The `cache:clear` Composer runs afterwards fails, naming `mulertech_file.storage_directory`: the bundles refuse to boot without their configuration, which steps 2 to 5 provide.
+
+2. Set up `mulertech/file-bundle`, which stores the featured images and attached files: a file entity extending `MulerTech\FileBundle\Entity\AbstractFile`, and its `storage_directory` and `file_class`, as its README says. The logged-in user who writes articles must implement `MulerTech\FileBundle\Model\FileUploaderInterface`. In production, `storage_directory` must be a persistent volume, included in the backups: inside the container alone, it is emptied by every deployment, and the articles lose their images.
 3. Set up `mulertech/seo-bundle`, which declares the pages to search engines and derives the sharing images: its configuration, a `SeoCompanyInfoProviderInterface` service and its routes, as its README says. Its `default_image` is shared for an article without featured image.
 4. Create the blog post entity and point `FileInterface` at the file entity ([1. The blog post entity](#1-the-blog-post-entity)).
 5. Name the entity in `config/packages/mulertech_blog.yaml` ([Configuration](#configuration)).
 6. Import the public and admin routes ([Routes](#routes)), and keep the admin prefix behind the site's firewall ([5. Administration](#5-administration)).
 7. Generate and run the migration: `bin/console doctrine:migrations:diff`, then `doctrine:migrations:migrate`. It creates the blog's table, its join table to the files, the unique constraint on `(slug, locale)` and the index on `translation_group`.
 8. Make Tailwind scan the bundle's templates and enable `@tailwindcss/typography` ([3. Templates](#3-templates)).
-9. Check that the layouts fill the blocks the pages use: `title`, `seo_meta` and `body` for `public_layout`; `title` and `body` for `admin_layout`, which also shows the flash messages ([Configuration](#configuration)).
+9. Check that the layouts fill the blocks the pages use: `title`, `seo_meta` and `body` for `public_layout`; `title` and `body` for `admin_layout`, which also shows the flash messages ([Configuration](#configuration)). A layout writing `<meta name="description">` itself, in a block of its own, needs `blog/index.html.twig` and `blog/show.html.twig` replaced to fill that block with `seo.description` ([3. Templates](#3-templates)); otherwise every page of the blog carries the description of the home page.
 
 `/blog` then lists the articles, `/admin/blog` creates them.
 
@@ -204,6 +206,13 @@ Each part of a page is a template of its own, so a site replaces only what diffe
 | `blog/_navigation.html.twig` | Previous article, back to the list, next article |
 
 Both pages replace the layout's `seo_meta` block with their own meta tags (see below): whether a layout leaves that block empty or includes the seo-bundle template there, the page carries its tags exactly once.
+
+The seo-bundle template writes no `<meta name="description">`: layouts write it themselves, each in a block named its own way, which the bundle cannot know of. A site whose layout does so fills that block in its replacement of `blog/index.html.twig` and `blog/show.html.twig`; `seo.description` holds the description, null for an article without meta description:
+
+```twig
+{# templates/bundles/MulerTechBlogBundle/blog/show.html.twig #}
+{% block description %}{{ seo.description ?? parent() }}{% endblock %}
+```
 
 ### 4. Labels
 
