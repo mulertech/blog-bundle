@@ -1,5 +1,15 @@
 # Release notes for blog-bundle
 
+## v1.1.0 - 2026-11-08
+
+The admin form looks the same on every site, whether or not it declares a global form theme.
+
+- The admin form carries its own form theme, `@MulerTechBlog/form/theme.html.twig`, applied over the site's. On a site declaring no global form theme, Symfony's default one left the fields without a border, indistinguishable from the text around them. Labels sit on their own line, help and errors are set in small type, and file, choice and checkbox fields are styled as well. The fields a site adds through `post_form_type` take the same look
+- The content field shows the Markdown syntax it accepts as a two-column reference: bold, italic, three heading levels, link, image, quote, bulleted and numbered lists, inline code, code block, horizontal rule and strikethrough. Each label and example is a translatable label (`admin.markdown.*`), so a site rewords them in its own translations
+- `admin.form.content_help` is removed, replaced by the reference above. A site that redefined it keeps an unused label, nothing more
+- The field for attaching files is styled like the rest of the form
+- A site already declaring a global form theme sees the article form take the bundle's neutral look instead of its own
+
 ## v1.0.0 - 2026-11-08
 
 First release: a Markdown blog for Symfony 8, shared by several sites. The bundle holds the article model, the public pages, the administration and the SEO; each site keeps its own entity and table, adds its own fields, and dresses the templates in its own design.
