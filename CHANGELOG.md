@@ -1,5 +1,16 @@
 # Release notes for blog-bundle
 
+## v1.2.0 - 2026-11-08
+
+Attached images are stored ready for the web.
+
+- A JPEG or PNG attached to an article is stored as WebP, turned upright from its EXIF orientation, and brought down to 1600 px wide when wider (`BlogMediaManager::ATTACHED_IMAGE_MAX_WIDTH`). A photo straight from a phone, 4000 px wide and several megabytes, no longer reaches every reader as sent
+- A WebP is only brought down when wider than 1600 px, otherwise kept as sent
+- A GIF keeps its animation and an SVG stays a vector: both are stored as sent, like documents
+- An image that cannot be decoded is refused with a message naming the file, instead of failing the request
+- An attached image is named after the stored file, `photo.webp`, in the insert button and the removal message
+- Requires `ext-exif`, which reads how a phone photo is to be turned upright
+
 ## v1.1.0 - 2026-11-08
 
 The admin form looks the same on every site, whether or not it declares a global form theme.
