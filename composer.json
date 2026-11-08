@@ -22,6 +22,7 @@
     ],
     "require": {
         "php": "^8.4",
+        "ext-fileinfo": "*",
         "ext-gd": "*",
         "doctrine/dbal": "^4.0",
         "doctrine/orm": "^3.0",

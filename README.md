@@ -12,7 +12,7 @@ Symfony bundle for a Markdown blog: shared article model, admin, public pages, s
 
 ## Requirements
 
-- PHP 8.4+ with the GD extension, which converts covers to WebP and lets `mulertech/seo-bundle` derive the sharing images
+- PHP 8.4+ with the GD extension, which converts covers to WebP and lets `mulertech/seo-bundle` derive the sharing images, and the fileinfo extension, which tells the type of an uploaded file (Windows builds of PHP leave it disabled)
 - Symfony 8.0+, with AssetMapper serving the admin script
 - Doctrine ORM 3; the queries are portable, the sites run PostgreSQL
 
