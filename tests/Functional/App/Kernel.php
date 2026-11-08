@@ -21,6 +21,7 @@ use Symfony\Bundle\SecurityBundle\SecurityBundle;
 use Symfony\Bundle\TwigBundle\TwigBundle;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\HttpKernel\Kernel as BaseKernel;
+use Symfony\Component\HttpKernel\Log\Logger;
 use Symfony\Component\Routing\Loader\Configurator\RoutingConfigurator;
 use Twig\Extra\TwigExtraBundle\TwigExtraBundle;
 
@@ -54,14 +55,27 @@ final class Kernel extends BaseKernel
         return sys_get_temp_dir().'/mulertech_blog_bundle/cache';
     }
 
+    /**
+     * The directory holding the cache, which the kernel creates: the logger opens its file
+     * without creating any directory.
+     */
     public function getLogDir(): string
     {
-        return sys_get_temp_dir().'/mulertech_blog_bundle/log';
+        return sys_get_temp_dir().'/mulertech_blog_bundle';
     }
 
     public static function storageDirectory(): string
     {
         return sys_get_temp_dir().'/mulertech_blog_bundle/storage';
+    }
+
+    /**
+     * Out of the repository: a card is named after the fingerprint of its source, which
+     * changes on every run.
+     */
+    public static function socialCardDirectory(): string
+    {
+        return sys_get_temp_dir().'/mulertech_blog_bundle/social-cards';
     }
 
     protected function configureContainer(ContainerConfigurator $container): void
@@ -98,10 +112,17 @@ final class Kernel extends BaseKernel
         ]);
         $container->extension('mulertech_seo', [
             'default_image' => '/images/og-default.jpg',
+            'social_card' => ['directory' => self::socialCardDirectory()],
         ]);
         $container->extension('mulertech_blog', [
             'post_class' => Article::class,
         ]);
+
+        // In a file, as Monolog does in an application: the refusals the tests provoke on
+        // purpose, a 404 or a 401, would otherwise print among the results.
+        $container->services()
+            ->set('logger', Logger::class)
+            ->args([null, '%kernel.logs_dir%/test.log']);
 
         $container->services()
             ->set(EditorProvider::class)

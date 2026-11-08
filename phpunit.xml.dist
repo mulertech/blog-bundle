@@ -17,6 +17,8 @@
     <php>
         <ini name="date.timezone" value="UTC" />
         <ini name="memory_limit" value="2048M" />
+        <!-- A debug kernel sets it to 3, and logs every query and event of the functional tests. -->
+        <server name="SHELL_VERBOSITY" value="-1" />
     </php>
     <source ignoreIndirectDeprecations="true" restrictNotices="true" restrictWarnings="true">
         <include><directory>./src</directory></include>

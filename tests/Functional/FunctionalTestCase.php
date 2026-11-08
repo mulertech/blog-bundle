@@ -38,6 +38,7 @@ abstract class FunctionalTestCase extends WebTestCase
         $schemaTool->createSchema($metadata);
 
         $this->removeDirectory(Kernel::storageDirectory());
+        $this->removeDirectory(Kernel::socialCardDirectory());
         mkdir(Kernel::storageDirectory(), 0o775, true);
     }
 
