@@ -53,7 +53,10 @@ final class BlogExtension extends AbstractExtension
         $ids = [];
 
         foreach ($post->getFiles() as $file) {
-            $ids[$file->getId()] = true;
+            // A file not yet saved has no id, so no content can refer to it.
+            if (null !== $id = $file->getId()) {
+                $ids[$id] = true;
+            }
         }
 
         return (string) preg_replace_callback(
