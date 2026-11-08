@@ -12,7 +12,7 @@ Symfony bundle for a Markdown blog: shared article model, admin, public pages, s
 
 ## Requirements
 
-- PHP 8.4+ with the GD extension, which converts covers to WebP and lets `mulertech/seo-bundle` derive the sharing images, and the fileinfo extension, which tells the type of an uploaded file (Windows builds of PHP leave it disabled)
+- PHP 8.4+ with the GD extension, which converts covers and attached images to WebP and lets `mulertech/seo-bundle` derive the sharing images, the exif extension, which reads how a phone photo is to be turned upright, and the fileinfo extension, which tells the type of an uploaded file (Windows builds of PHP leave it disabled)
 - Symfony 8.0+, with AssetMapper serving the admin script
 - Doctrine ORM 3; the queries are portable, the sites run PostgreSQL
 
@@ -231,6 +231,7 @@ Files are stored through `mulertech/file-bundle` on behalf of the logged-in user
 | Slug | Built from the title when left blank; one typed by hand must be free in the article's language |
 | Featured image | Stored at exactly 1200×675 px (16:9) as WebP. Another size opens a cropper in the browser; a cover of another size that reaches the server anyway is refused, naming both sizes |
 | Attached files | Listed with an "insert" button that writes `![name](blog-file:12)` for an image, `[name](blog-file:12)` for a document, where the cursor stands in the content |
+| Attached images | A JPEG or PNG is stored as WebP, turned upright from its EXIF orientation and brought down to 1600 px wide when wider; a WebP is only brought down. A GIF keeps its animation and an SVG stays a vector: both are stored as sent, like documents. An image that cannot be decoded is refused, naming the file |
 | Publication | "Publier" and "Dépublier" buttons; the date of first publication is kept |
 
 The content refers to an attached file as `blog-file:<id>` rather than by its address, which carries the slug and the language prefix: correcting a slug would otherwise break every image of the article. The `mulertech_blog_content` Twig filter turns these references into addresses; the article template applies it before `markdown_to_html`.

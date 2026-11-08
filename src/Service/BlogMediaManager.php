@@ -9,6 +9,7 @@ use MulerTech\BlogBundle\Entity\AbstractBlogPost;
 use MulerTech\FileBundle\Model\FileInterface;
 use MulerTech\FileBundle\Model\FileUploaderInterface;
 use MulerTech\FileBundle\Service\FileManagerInterface;
+use Symfony\Component\HttpFoundation\File\Exception\FileException;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
@@ -23,6 +24,19 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 final readonly class BlogMediaManager
 {
     private const int WEBP_QUALITY = 85;
+
+    /**
+     * Twice the width of the article column, so an inserted image stays sharp on a high
+     * density screen while a photo straight from a phone, 4000 px wide and several
+     * megabytes, is not what every reader downloads.
+     */
+    public const int ATTACHED_IMAGE_MAX_WIDTH = 1600;
+
+    /**
+     * The attached images stored as WebP. A GIF keeps its animation and an SVG stays a
+     * vector, so both are stored as sent, like the documents.
+     */
+    private const array CONVERTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
     public function __construct(
         private FileManagerInterface $fileManager,
@@ -66,9 +80,24 @@ final readonly class BlogMediaManager
         $this->fileManager->delete($cover);
     }
 
+    /**
+     * A JPEG or PNG image is stored as WebP, turned upright and brought down to
+     * ATTACHED_IMAGE_MAX_WIDTH; a WebP already within that width is kept as sent.
+     *
+     * @throws FileException when an image cannot be decoded, naming the file
+     */
     public function attach(AbstractBlogPost $post, UploadedFile $file): FileInterface
     {
-        $attached = $this->fileManager->upload($file, $this->uploader(), $post, true);
+        $webp = $this->attachedImageAsWebp($file);
+
+        try {
+            $attached = $this->fileManager->upload($webp ?? $file, $this->uploader(), $post, true);
+        } finally {
+            if (null !== $webp) {
+                @unlink($webp->getPathname());
+            }
+        }
+
         $post->addFile($attached);
         $this->entityManager->flush();
 
@@ -121,17 +150,89 @@ final readonly class BlogMediaManager
             throw new \InvalidArgumentException(sprintf('The cover "%s" cannot be read as an image.', $image->getClientOriginalName()));
         }
 
+        return $this->encodeWebp($bitmap, $image->getClientOriginalName());
+    }
+
+    private function attachedImageAsWebp(UploadedFile $file): ?UploadedFile
+    {
+        $type = $file->getMimeType();
+
+        if (!\in_array($type, self::CONVERTED_IMAGE_TYPES, true)) {
+            return null;
+        }
+
+        $contents = $file->getContent();
+        $bitmap = '' === $contents ? false : @imagecreatefromstring($contents);
+
+        if (false === $bitmap) {
+            throw new FileException(sprintf('The image "%s" cannot be decoded as %s.', $file->getClientOriginalName(), $type));
+        }
+
+        $upright = 'image/jpeg' === $type ? $this->upright($bitmap, $file->getPathname()) : $bitmap;
+
+        if ('image/webp' === $type && imagesx($upright) <= self::ATTACHED_IMAGE_MAX_WIDTH) {
+            return null;
+        }
+
+        if (imagesx($upright) > self::ATTACHED_IMAGE_MAX_WIDTH) {
+            imagealphablending($upright, false);
+            $scaled = imagescale($upright, self::ATTACHED_IMAGE_MAX_WIDTH);
+
+            // Reached only when GD runs out of memory for the scaled copy.
+            if (false === $scaled) {
+                throw new \RuntimeException(sprintf('The image "%s" could not be scaled down to %d px.', $file->getClientOriginalName(), self::ATTACHED_IMAGE_MAX_WIDTH));
+            }
+
+            $upright = $scaled;
+        }
+
+        return $this->encodeWebp($upright, $file->getClientOriginalName());
+    }
+
+    /**
+     * A phone stores a photo as the sensor saw it and records how to turn it in its EXIF
+     * orientation; GD ignores that record, and the WebP, which carries none, would show
+     * the photo on its side.
+     */
+    private function upright(\GdImage $bitmap, string $path): \GdImage
+    {
+        $exif = @exif_read_data($path);
+        $orientation = \is_array($exif) && \is_int($exif['Orientation'] ?? null) ? $exif['Orientation'] : 1;
+
+        $rotated = match ($orientation) {
+            3 => imagerotate($bitmap, 180, 0),
+            5, 6 => imagerotate($bitmap, -90, 0),
+            7, 8 => imagerotate($bitmap, 90, 0),
+            default => $bitmap,
+        };
+
+        // Reached only when GD runs out of memory for the turned copy.
+        if (false === $rotated) {
+            throw new \RuntimeException(sprintf('The image at %s could not be turned upright (EXIF orientation %d).', $path, $orientation));
+        }
+
+        match ($orientation) {
+            2, 5, 7 => imageflip($rotated, \IMG_FLIP_HORIZONTAL),
+            4 => imageflip($rotated, \IMG_FLIP_VERTICAL),
+            default => null,
+        };
+
+        return $rotated;
+    }
+
+    private function encodeWebp(\GdImage $bitmap, string $clientName): UploadedFile
+    {
         imagepalettetotruecolor($bitmap);
         imagesavealpha($bitmap, true);
-        $path = tempnam(sys_get_temp_dir(), 'mulertech_blog_cover_');
+        $path = tempnam(sys_get_temp_dir(), 'mulertech_blog_image_');
 
         // Reached only with a temporary directory full or not writable.
         if (false === $path || !imagewebp($bitmap, $path, self::WEBP_QUALITY)) {
-            throw new \RuntimeException(sprintf('The cover "%s" could not be encoded as WebP in %s.', $image->getClientOriginalName(), sys_get_temp_dir()));
+            throw new \RuntimeException(sprintf('The image "%s" could not be encoded as WebP in %s.', $clientName, sys_get_temp_dir()));
         }
 
         // `test` lets the file manager accept a file that did not arrive through an HTTP
         // upload, which this one, written just above, never did.
-        return new UploadedFile($path, pathinfo($image->getClientOriginalName(), \PATHINFO_FILENAME).'.webp', 'image/webp', test: true);
+        return new UploadedFile($path, pathinfo($clientName, \PATHINFO_FILENAME).'.webp', 'image/webp', test: true);
     }
 }

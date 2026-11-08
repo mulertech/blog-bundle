@@ -9,6 +9,7 @@ use MulerTech\BlogBundle\Tests\DatabaseTestCase;
 use MulerTech\BlogBundle\Tests\Fixtures\AdminUser;
 use MulerTech\BlogBundle\Tests\Fixtures\Entity\File;
 use MulerTech\BlogBundle\Tests\Fixtures\InMemoryFileManager;
+use Symfony\Component\HttpFoundation\File\Exception\FileException;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Security\Core\Authentication\Token\NullToken;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage;
@@ -139,6 +140,96 @@ final class BlogMediaManagerTest extends DatabaseTestCase
         self::assertSame(0, (int) $this->entityManager->getConnection()->fetchOne('SELECT COUNT(*) FROM blog_posts'));
     }
 
+    public function testAWidePhotoIsStoredAsWebpAtTheMaximumWidth(): void
+    {
+        $file = $this->manager()->attach($this->post('Photo'), $this->jpeg('gîte.jpg', 3200, 1800));
+
+        self::assertSame('gîte.webp', $file->getFilename());
+        self::assertSame('image/webp', $file->getMimeType());
+        self::assertSame([BlogMediaManager::ATTACHED_IMAGE_MAX_WIDTH, 900], $this->dimensions($file));
+    }
+
+    /**
+     * Orientation 6 records a photo taken with the phone upright and stored on its side.
+     */
+    public function testAPhonePhotoIsTurnedUpright(): void
+    {
+        $file = $this->manager()->attach($this->post('Photo'), $this->jpeg('portrait.jpg', 400, 200, orientation: 6));
+
+        self::assertSame([200, 400], $this->dimensions($file));
+    }
+
+    public function testAPngWithinTheWidthIsStoredAsWebpAtItsSize(): void
+    {
+        $file = $this->manager()->attach($this->post('Schéma'), $this->png('schéma.png', 300, 200));
+
+        self::assertSame('schéma.webp', $file->getFilename());
+        self::assertSame([300, 200], $this->dimensions($file));
+    }
+
+    public function testAWideTransparentPngKeepsItsTransparencyOnceBroughtDown(): void
+    {
+        $image = imagecreatetruecolor(2000, 1000);
+        imagealphablending($image, false);
+        imagefill($image, 0, 0, (int) imagecolorallocatealpha($image, 0, 0, 0, 127));
+        imagesavealpha($image, true);
+        $path = (string) tempnam(sys_get_temp_dir(), 'upload');
+        imagepng($image, $path);
+
+        $file = $this->manager()->attach($this->post('Logo'), new UploadedFile($path, 'logo.png', 'image/png', test: true));
+
+        $stored = imagecreatefromwebp($this->fileManager->getAbsolutePath($file));
+        self::assertNotFalse($stored);
+        self::assertSame(127, imagecolorsforindex($stored, (int) imagecolorat($stored, 10, 10))['alpha']);
+    }
+
+    public function testAWebpWithinTheWidthIsKeptAsSent(): void
+    {
+        $sent = $this->webp('léger.webp', 800, 400);
+        $hash = md5_file($sent->getPathname());
+
+        $file = $this->manager()->attach($this->post('Léger'), $sent);
+
+        self::assertSame('léger.webp', $file->getFilename());
+        self::assertSame($hash, md5_file($this->fileManager->getAbsolutePath($file)));
+    }
+
+    public function testAWideWebpIsBroughtDownToTheMaximumWidth(): void
+    {
+        $file = $this->manager()->attach($this->post('Large'), $this->webp('large.webp', 2000, 1000));
+
+        self::assertSame([BlogMediaManager::ATTACHED_IMAGE_MAX_WIDTH, 800], $this->dimensions($file));
+    }
+
+    /**
+     * Converting a GIF would lose its animation, and a document has nothing to convert.
+     */
+    public function testAGifAndADocumentAreStoredAsSent(): void
+    {
+        $post = $this->post('Divers');
+        $gifPath = (string) tempnam(sys_get_temp_dir(), 'upload');
+        imagegif(imagecreatetruecolor(20, 20), $gifPath);
+        $textPath = (string) tempnam(sys_get_temp_dir(), 'upload');
+        file_put_contents($textPath, 'Programme du séjour.');
+
+        $gif = $this->manager()->attach($post, new UploadedFile($gifPath, 'anime.gif', 'image/gif', test: true));
+        $text = $this->manager()->attach($post, new UploadedFile($textPath, 'programme.txt', 'text/plain', test: true));
+
+        self::assertSame(['anime.gif', 'image/gif'], [$gif->getFilename(), $gif->getMimeType()]);
+        self::assertSame(['programme.txt', 'text/plain'], [$text->getFilename(), $text->getMimeType()]);
+    }
+
+    public function testAnImageThatCannotBeDecodedIsRefusedByName(): void
+    {
+        $path = (string) tempnam(sys_get_temp_dir(), 'upload');
+        file_put_contents($path, "\xFF\xD8\xFF\xE0".str_repeat('x', 64));
+
+        $this->expectException(FileException::class);
+        $this->expectExceptionMessage('The image "abime.jpg" cannot be decoded as image/jpeg.');
+
+        $this->manager()->attach($this->post('Abîmé'), new UploadedFile($path, 'abime.jpg', 'image/jpeg', test: true));
+    }
+
     /**
      * The file bundle files every upload under its uploader; with nobody to name, the
      * failure says what the user is expected to be.
@@ -166,6 +257,49 @@ final class BlogMediaManagerTest extends DatabaseTestCase
     private function manager(): BlogMediaManager
     {
         return new BlogMediaManager($this->fileManager, $this->tokenStorage, $this->entityManager);
+    }
+
+    /**
+     * @return array{int, int}
+     */
+    private function dimensions(\MulerTech\FileBundle\Model\FileInterface $file): array
+    {
+        $size = getimagesize($this->fileManager->getAbsolutePath($file));
+        self::assertIsArray($size);
+
+        return [$size[0], $size[1]];
+    }
+
+    /**
+     * A JPEG as a phone writes it: with `orientation`, an EXIF segment telling how to turn
+     * the picture upright.
+     */
+    private function jpeg(string $name, int $width, int $height, ?int $orientation = null): UploadedFile
+    {
+        \assert($width > 0 && $height > 0);
+        ob_start();
+        imagejpeg(imagecreatetruecolor($width, $height));
+        $jpeg = (string) ob_get_clean();
+
+        if (null !== $orientation) {
+            $tiff = "II*\x00".pack('V', 8).pack('v', 1).pack('vvVvv', 0x0112, 3, 1, $orientation, 0).pack('V', 0);
+            $exif = "Exif\x00\x00".$tiff;
+            $jpeg = substr($jpeg, 0, 2)."\xFF\xE1".pack('n', \strlen($exif) + 2).$exif.substr($jpeg, 2);
+        }
+
+        $path = (string) tempnam(sys_get_temp_dir(), 'upload');
+        file_put_contents($path, $jpeg);
+
+        return new UploadedFile($path, $name, 'image/jpeg', test: true);
+    }
+
+    private function webp(string $name, int $width, int $height): UploadedFile
+    {
+        \assert($width > 0 && $height > 0);
+        $path = (string) tempnam(sys_get_temp_dir(), 'upload');
+        imagewebp(imagecreatetruecolor($width, $height), $path);
+
+        return new UploadedFile($path, $name, 'image/webp', test: true);
     }
 
     private function png(string $name, int $width, int $height): UploadedFile

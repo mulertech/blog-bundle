@@ -331,7 +331,7 @@ final class BlogAdminControllerTest extends PublicPageTestCase
         self::assertSame(['« schéma.png » est joint à l\'article.'], $this->flashes('success'));
 
         $page = $this->crawl($this->controller()->edit($this->request(), (int) $post->getId()));
-        self::assertSame(sprintf('![schéma.png](blog-file:%d)', $file->getId()), $page->filter('[data-mulertech-blog-insert]')->attr('data-mulertech-blog-insert'));
+        self::assertSame(sprintf('![schéma.webp](blog-file:%d)', $file->getId()), $page->filter('[data-mulertech-blog-insert]')->attr('data-mulertech-blog-insert'));
     }
 
     public function testADocumentIsInsertedAsALink(): void
@@ -373,7 +373,7 @@ final class BlogAdminControllerTest extends PublicPageTestCase
         $this->controller()->removeFile($this->post_(['_token' => self::TOKEN]), (int) $post->getId(), (int) $file->getId());
 
         self::assertCount(0, $post->getFiles());
-        self::assertSame(['« schéma.png » est retiré et supprimé.'], $this->flashes('success'));
+        self::assertSame(['« schéma.webp » est retiré et supprimé.'], $this->flashes('success'));
     }
 
     public function testAFileOfAnotherArticleCannotBeRemovedThroughThisOne(): void
