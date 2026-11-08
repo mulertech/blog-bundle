@@ -29,7 +29,7 @@
         <input type="hidden" name="_token" value="{{ csrf_token('mulertech_blog_files_' ~ post.id) }}">
         <label>
             <span class="sr-only">{{ 'admin.files.choose'|trans({}, 'MulerTechBlogBundle') }}</span>
-            <input type="file" name="file" required>
+            <input type="file" name="file" required class="block text-sm text-gray-700 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-gray-100 file:px-4 file:py-2 file:font-semibold hover:file:bg-gray-200">
         </label>
         <button type="submit" class="rounded-lg bg-gray-900 px-4 py-2 font-semibold text-white hover:bg-gray-700">{{ 'admin.files.add'|trans({}, 'MulerTechBlogBundle') }}</button>
     </form>

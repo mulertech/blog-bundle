@@ -1,0 +1,73 @@
+{#
+    The form theme of the admin pages. The bundle applies it to its own form rather than
+    relying on the site's: a site declaring no global form theme would otherwise show
+    borderless fields that cannot be told apart from the text around them. Its classes are
+    found by Tailwind through the `@source` the site already points at the bundle templates.
+#}
+{% use 'form_div_layout.html.twig' %}
+
+{%- block form_row -%}
+    <div>
+        {{- form_label(form) -}}
+        {{- form_widget(form) -}}
+        {{- form_help(form) -}}
+        {{- form_errors(form) -}}
+    </div>
+{%- endblock form_row -%}
+
+{%- block form_label -%}
+    {%- set label_class = 'checkbox' in block_prefixes ? 'text-sm text-gray-700' : 'mb-2 block text-sm font-medium text-gray-700' -%}
+    {%- set label_attr = label_attr|merge({class: (label_attr.class|default('') ~ ' ' ~ label_class)|trim}) -%}
+    {{- parent() -}}
+{%- endblock form_label -%}
+
+{%- block form_help -%}
+    {%- set help_attr = help_attr|merge({class: (help_attr.class|default('') ~ ' mt-1 text-xs text-gray-500')|trim}) -%}
+    {{- parent() -}}
+{%- endblock form_help -%}
+
+{%- block form_errors -%}
+    {%- if errors|length > 0 -%}
+        <ul class="mt-1 space-y-1 text-sm text-red-600">
+            {%- for error in errors -%}
+                <li>{{ error.message }}</li>
+            {%- endfor -%}
+        </ul>
+    {%- endif -%}
+{%- endblock form_errors -%}
+
+{%- block form_widget_simple -%}
+    {%- set type = type|default('text') -%}
+    {%- if type == 'file' -%}
+        {%- set attr = attr|merge({class: attr.class|default('block w-full text-sm text-gray-700 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-gray-100 file:px-4 file:py-2 file:font-semibold hover:file:bg-gray-200')}) -%}
+    {%- elseif type != 'hidden' -%}
+        {%- set attr = attr|merge({class: attr.class|default('w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/20')}) -%}
+    {%- endif -%}
+    {{- parent() -}}
+{%- endblock form_widget_simple -%}
+
+{%- block textarea_widget -%}
+    {%- set attr = attr|merge({class: attr.class|default('w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/20')}) -%}
+    {{- parent() -}}
+{%- endblock textarea_widget -%}
+
+{%- block choice_widget_collapsed -%}
+    {%- set attr = attr|merge({class: attr.class|default('w-full rounded-lg border border-gray-300 bg-white px-4 py-2 focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/20')}) -%}
+    {{- parent() -}}
+{%- endblock choice_widget_collapsed -%}
+
+{%- block checkbox_row -%}
+    <div>
+        <div class="flex items-center gap-2">
+            {{- form_widget(form) -}}
+            {{- form_label(form) -}}
+        </div>
+        {{- form_help(form) -}}
+        {{- form_errors(form) -}}
+    </div>
+{%- endblock checkbox_row -%}
+
+{%- block checkbox_widget -%}
+    {%- set attr = attr|merge({class: attr.class|default('h-4 w-4 rounded border-gray-300')}) -%}
+    {{- parent() -}}
+{%- endblock checkbox_widget -%}

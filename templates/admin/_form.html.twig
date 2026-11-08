@@ -1,5 +1,6 @@
 {% set cover_width = constant('MulerTech\\BlogBundle\\Validator\\CoverDimensions::WIDTH') %}
 {% set cover_height = constant('MulerTech\\BlogBundle\\Validator\\CoverDimensions::HEIGHT') %}
+{% form_theme form '@MulerTechBlog/form/theme.html.twig' %}
 {{ form_start(form, {attr: {class: 'space-y-6 rounded-xl bg-white p-6 shadow', novalidate: 'novalidate'}}) }}
     {{ form_row(form.title) }}
     {{ form_row(form.slug) }}
@@ -7,9 +8,33 @@
 
     <div>
         {{ form_label(form.content) }}
-        {{ form_widget(form.content, {attr: {rows: 20, class: 'w-full font-mono text-sm', 'data-mulertech-blog-editor': ''}}) }}
+        {{ form_widget(form.content, {attr: {rows: 20, class: 'w-full rounded-lg border border-gray-300 px-4 py-2 font-mono text-sm focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/20', 'data-mulertech-blog-editor': ''}}) }}
         {{ form_errors(form.content) }}
-        <p class="mt-2 text-xs text-gray-500">{{ 'admin.form.content_help'|trans({}, 'MulerTechBlogBundle') }}</p>
+        {# Each key is written in full, so the translation test finds every label used. #}
+        {% set markdown_syntax = [
+            { label: 'admin.markdown.bold', example: 'admin.markdown.bold_example' },
+            { label: 'admin.markdown.italic', example: 'admin.markdown.italic_example' },
+            { label: 'admin.markdown.heading_1', example: 'admin.markdown.heading_1_example' },
+            { label: 'admin.markdown.heading_2', example: 'admin.markdown.heading_2_example' },
+            { label: 'admin.markdown.heading_3', example: 'admin.markdown.heading_3_example' },
+            { label: 'admin.markdown.link', example: 'admin.markdown.link_example' },
+            { label: 'admin.markdown.image', example: 'admin.markdown.image_example' },
+            { label: 'admin.markdown.quote', example: 'admin.markdown.quote_example' },
+            { label: 'admin.markdown.list', example: 'admin.markdown.list_example' },
+            { label: 'admin.markdown.ordered_list', example: 'admin.markdown.ordered_list_example' },
+            { label: 'admin.markdown.inline_code', example: 'admin.markdown.inline_code_example' },
+            { label: 'admin.markdown.code_block', example: 'admin.markdown.code_block_example' },
+            { label: 'admin.markdown.rule', example: 'admin.markdown.rule_example' },
+            { label: 'admin.markdown.strikethrough', example: 'admin.markdown.strikethrough_example' }
+        ] %}
+        <dl class="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 rounded-lg bg-gray-50 p-3 font-mono text-xs text-gray-700 sm:grid-cols-2">
+            {% for entry in markdown_syntax %}
+                <div class="flex justify-between gap-4">
+                    <dt class="font-sans text-gray-900">{{ entry.label|trans({}, 'MulerTechBlogBundle') }}</dt>
+                    <dd>{{ entry.example|trans({}, 'MulerTechBlogBundle') }}</dd>
+                </div>
+            {% endfor %}
+        </dl>
     </div>
 
     {{ form_row(form.metaDescription) }}

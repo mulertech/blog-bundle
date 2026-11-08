@@ -134,6 +134,25 @@ final class BlogTest extends FunctionalTestCase
         self::assertStringContainsString("'nonce-".$nonce."'", (string) $this->client->getResponse()->headers->get('Content-Security-Policy'));
     }
 
+    /**
+     * The test application declares no global form theme, like a site that styles its own
+     * forms field by field: the admin form still shows bordered fields and block labels.
+     */
+    public function testTheAdminFormIsStyledWithoutAFormThemeFromTheSite(): void
+    {
+        $this->client->loginUser(new Editor());
+
+        $page = $this->client->request('GET', '/admin/blog/new');
+
+        self::assertStringContainsString('border', (string) $page->filter('#blog_post_title')->attr('class'));
+        self::assertStringContainsString('block', (string) $page->filter('label[for=blog_post_title]')->attr('class'));
+        self::assertStringContainsString('text-gray-500', (string) $page->filter('#blog_post_slug_help')->attr('class'));
+        self::assertStringContainsString('border', (string) $page->filter('#blog_post_content')->attr('class'));
+        self::assertStringContainsString('file:', (string) $page->filter('#blog_post_featuredImage')->attr('class'));
+        self::assertCount(14, $page->filter('form dl dt'), 'the markdown syntax lists every element the editor accepts');
+        self::assertSame('~~texte~~', $page->filter('form dl dd')->last()->text());
+    }
+
     public function testTheAdminScriptIsServedByTheSiteAssetMapper(): void
     {
         $this->client->loginUser(new Editor());

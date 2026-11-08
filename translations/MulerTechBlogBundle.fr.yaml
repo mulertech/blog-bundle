@@ -56,12 +56,40 @@ admin:
         slug_help: Minuscules, chiffres et tirets. Laissé vide, il est tiré du titre. Le modifier après publication casse les liens existants.
         locale: Langue
         content: Contenu
-        content_help: 'Markdown : **gras**, *italique*, ## titre, [lien](adresse), - liste, > citation, `code`.'
         meta_description: Meta description
         meta_description_help: 150 à 160 caractères, affichés par les moteurs de recherche sous le titre.
         featured_image: Image à la une
         featured_image_help: 'JPEG, PNG, WEBP ou GIF, %max% Mo au plus. Enregistrée en %size% px : toute autre taille ouvre le recadrage.'
         remove_featured_image: Supprimer l'image à la une
+    markdown:
+        bold: 'Gras'
+        bold_example: '**texte**'
+        italic: 'Italique'
+        italic_example: '*texte*'
+        heading_1: 'Titre 1'
+        heading_1_example: '# Titre'
+        heading_2: 'Titre 2'
+        heading_2_example: '## Titre'
+        heading_3: 'Titre 3'
+        heading_3_example: '### Titre'
+        link: 'Lien'
+        link_example: '[texte](url)'
+        image: 'Image'
+        image_example: '![alt](url)'
+        quote: 'Citation'
+        quote_example: '> texte'
+        list: 'Liste'
+        list_example: '- élément'
+        ordered_list: 'Liste num.'
+        ordered_list_example: '1. élément'
+        inline_code: 'Code inline'
+        inline_code_example: '`code`'
+        code_block: 'Bloc code'
+        code_block_example: '```langage```'
+        rule: 'Ligne'
+        rule_example: '---'
+        strikethrough: 'Barré'
+        strikethrough_example: '~~texte~~'
     cropper:
         help: 'Cette image ne mesure pas %size% px. Faites-la glisser et réglez le zoom pour choisir le cadrage enregistré.'
         zoom: Zoom

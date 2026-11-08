@@ -263,6 +263,8 @@ final class BlogPostType extends AbstractType
 
 The fields it adds are rendered after the bundle's ones; replace `admin/_form.html.twig` to lay them out otherwise.
 
+The admin form carries its own form theme, `@MulerTechBlog/form/theme.html.twig`, applied over the site's: the pages look the same on a site declaring no global form theme, where Symfony's default one would leave the fields without a border. The fields a site adds take the same look.
+
 | Template | Part |
 |---|---|
 | `admin/index.html.twig` | The list |
@@ -270,6 +272,7 @@ The fields it adds are rendered after the bundle's ones; replace `admin/_form.ht
 | `admin/_actions.html.twig` | Status, publish or unpublish, delete |
 | `admin/_form.html.twig` | The form, with the cover cropper |
 | `admin/_files.html.twig` | The attached files |
+| `form/theme.html.twig` | The form theme of the admin form |
 
 ### 6. Search engines and social platforms
 

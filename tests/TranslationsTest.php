@@ -47,7 +47,7 @@ final class TranslationsTest extends TestCase
      */
     public static function domains(): iterable
     {
-        yield 'labels' => ['MulerTechBlogBundle', "/'((?:blog|admin)\\.[a-z_.]+)'/", ['templates/*/*.twig', 'src/*/*.php']];
+        yield 'labels' => ['MulerTechBlogBundle', "/'((?:blog|admin)\\.[a-z0-9_.]+)'/", ['templates/*/*.twig', 'src/*/*.php']];
         yield 'validation messages' => ['validators', "/'(mulertech_blog\\.[a-z_.]+)'/", ['src/Form/*.php', 'src/Validator/*.php', 'src/Controller/*.php']];
     }
 }
