@@ -109,6 +109,26 @@ final class MulerTechBlogBundleTest extends TestCase
         self::assertFileExists(\dirname(__DIR__).'/assets/admin.js');
     }
 
+    /**
+     * Unknown to Doctrine, the mapped superclass would be taken for a plain parent class,
+     * and its lifecycle callbacks lost.
+     */
+    public function testTheEntityOfTheBundleIsKnownToDoctrine(): void
+    {
+        $container = new ContainerBuilder();
+        $extension = new MulerTechBlogBundle()->getContainerExtension();
+        self::assertInstanceOf(PrependExtensionInterface::class, $extension);
+
+        $extension->prepend($container);
+
+        self::assertSame([['orm' => ['mappings' => ['MulerTechBlogBundle' => [
+            'type' => 'attribute',
+            'dir' => \dirname(__DIR__).'/src/Entity',
+            'prefix' => 'MulerTech\\BlogBundle\\Entity',
+            'is_bundle' => false,
+        ]]]]], $container->getExtensionConfig('doctrine'));
+    }
+
     public function testTheAdminControllerReceivesTheAdminSettings(): void
     {
         $definition = $this->load([

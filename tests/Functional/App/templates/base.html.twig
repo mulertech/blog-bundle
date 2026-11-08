@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="{{ app.request.locale }}">
+<head>
+    <title>{% block title %}Exemple{% endblock %}</title>
+    {% block seo_meta %}{% endblock %}
+</head>
+<body>
+    {% for type, messages in app.flashes %}{% for message in messages %}<p class="flash-{{ type }}">{{ message }}</p>{% endfor %}{% endfor %}
+    {% block body %}{% endblock %}
+</body>
+</html>

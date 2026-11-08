@@ -83,6 +83,18 @@ final class MulerTechBlogBundle extends AbstractBundle
 
     public function prependExtension(ContainerConfigurator $container, ContainerBuilder $builder): void
     {
+        // Without it Doctrine takes AbstractBlogPost for a plain parent class: the fields still
+        // map, but its lifecycle callbacks are lost, and an article is saved without its
+        // creation date.
+        $builder->prependExtensionConfig('doctrine', [
+            'orm' => ['mappings' => ['MulerTechBlogBundle' => [
+                'type' => 'attribute',
+                'dir' => $this->getPath().'/src/Entity',
+                'prefix' => 'MulerTech\\BlogBundle\\Entity',
+                'is_bundle' => false,
+            ]]],
+        ]);
+
         // The admin script is served by the site's AssetMapper, as `@mulertech/blog-bundle/admin.js`.
         $builder->prependExtensionConfig('framework', [
             'asset_mapper' => ['paths' => [$this->getPath().'/assets' => '@mulertech/blog-bundle']],

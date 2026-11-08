@@ -8,28 +8,34 @@ ___
 [![Test Coverage](https://raw.githubusercontent.com/mulertech/blog-bundle/badge/badge-coverage.svg)](https://packagist.org/packages/mulertech/blog-bundle)
 ___
 
-Symfony bundle for a Markdown blog: shared article model, admin, public pages, full-text search, social sharing and SEO, with one article per language.
+Symfony bundle for a Markdown blog: shared article model, admin, public pages, search, social sharing and SEO, with one article per language.
 
 ## Requirements
 
-- PHP 8.4+ with the GD extension (required by `mulertech/seo-bundle` to derive social cards)
-- Symfony 8.0+
-- Doctrine ORM 3
+- PHP 8.4+ with the GD extension, which converts covers to WebP and lets `mulertech/seo-bundle` derive the sharing images
+- Symfony 8.0+, with AssetMapper serving the admin script
+- Doctrine ORM 3; the queries are portable, the sites run PostgreSQL
 
 ## Installation
 
-```bash
-composer require mulertech/blog-bundle
-```
+From a Symfony application with Doctrine, Twig and AssetMapper, in this order. Each step links to the section detailing it.
 
-Without Symfony Flex, register the bundle in `config/bundles.php`:
+1. Require the bundle. Symfony Flex registers it, along with `mulertech/file-bundle`, `mulertech/seo-bundle` and `twig/extra-bundle`; without Flex, add them to `config/bundles.php`:
 
-```php
-return [
-    // ...
-    MulerTech\BlogBundle\MulerTechBlogBundle::class => ['all' => true],
-];
-```
+    ```bash
+    composer require mulertech/blog-bundle
+    ```
+
+2. Set up `mulertech/file-bundle`, which stores the featured images and attached files: a file entity extending `MulerTech\FileBundle\Entity\AbstractFile`, and its `storage_directory` and `file_class`, as its README says. The logged-in user who writes articles must implement `MulerTech\FileBundle\Model\FileUploaderInterface`.
+3. Set up `mulertech/seo-bundle`, which declares the pages to search engines and derives the sharing images: its configuration, a `SeoCompanyInfoProviderInterface` service and its routes, as its README says. Its `default_image` is shared for an article without featured image.
+4. Create the blog post entity and point `FileInterface` at the file entity ([1. The blog post entity](#1-the-blog-post-entity)).
+5. Name the entity in `config/packages/mulertech_blog.yaml` ([Configuration](#configuration)).
+6. Import the public and admin routes ([Routes](#routes)), and keep the admin prefix behind the site's firewall ([5. Administration](#5-administration)).
+7. Generate and run the migration: `bin/console doctrine:migrations:diff`, then `doctrine:migrations:migrate`. It creates the blog's table, its join table to the files, the unique constraint on `(slug, locale)` and the index on `translation_group`.
+8. Make Tailwind scan the bundle's templates and enable `@tailwindcss/typography` ([3. Templates](#3-templates)).
+9. Check that the layouts fill the blocks the pages use: `title`, `seo_meta` and `body` for `public_layout`; `title` and `body` for `admin_layout`, which also shows the flash messages ([Configuration](#configuration)).
+
+`/blog` then lists the articles, `/admin/blog` creates them.
 
 ## Configuration
 
@@ -145,16 +151,6 @@ The bundle adds to the entity's table a unique constraint on `(slug, locale)` an
 #### Multilingual model
 
 One row is one article in one language. The versions of an article in several languages are separate rows sharing a `translationGroup`, each with its own slug, publication date and view count. A single-language site never sees more than a column filled on its own.
-
-## Testing
-
-```bash
-./vendor/bin/mtdocker test-ai
-```
-
-## License
-
-MIT. See [LICENSE](LICENSE).
 
 ### 2. Services
 
@@ -282,3 +278,13 @@ The blog relies on `mulertech/seo-bundle`, configured and with its routes import
 With `mulertech/csp-bundle` installed, the structured data script carries the nonce of its `main` handle; without it, no nonce, and the site's policy is its own to adapt.
 
 A site keeping a social card provider of its own under the type `blog` makes seo-bundle refuse both, naming them: remove the site's one.
+
+## Testing
+
+```bash
+./vendor/bin/mtdocker test-ai
+```
+
+## License
+
+MIT. See [LICENSE](LICENSE).
