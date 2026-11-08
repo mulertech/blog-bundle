@@ -1,5 +1,16 @@
 # Release notes for blog-bundle
 
+## v1.3.0 - 2026-11-08
+
+An article is previewed in the site's own template before it is published.
+
+- "Aperçu" on the admin page of an article opens it in the public template, drafts included, from its last saved version, under a banner saying so and linking back to the edition. The route, `mulertech_blog_admin_preview`, sits under the admin prefix: only the admin reaches it. It counts no view and sends
+  `X-Robots-Tag: noindex, nofollow`
+- `mulertech_blog_file_url(post, file)` gives the address of an article's file: the public one, or the admin one during a preview. The public file route answers only for a published article, and the admin is often signed in behind a firewall the public pages do not share. A site replacing `blog/show.html.twig`
+  or `blog/_card.html.twig` uses it instead of `path('mulertech_blog_file', …)`, or the preview of a draft shows its images broken
+- The `mulertech_blog_content` filter addresses inserted files the same way
+- An article never published shows no publication date, where it showed the current day
+
 ## v1.2.0 - 2026-11-08
 
 Attached images are stored ready for the web.
