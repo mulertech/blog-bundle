@@ -26,7 +26,7 @@ final readonly class BlogPostLlmsSectionProvider implements LlmsSectionProviderI
     public function getSections(): iterable
     {
         $links = array_map(
-            fn ($post): LlmsLink => new LlmsLink($this->urls->post($post, true), $post->getTitle(), $post->getMetaDescription() ?? ''),
+            fn ($post): LlmsLink => new LlmsLink($this->urls->post($post, true), $post->getTitle(), $post->getSeoExcerpt() ?? ''),
             $this->repository->findAllPublished(),
         );
 

@@ -9,6 +9,7 @@ use MulerTech\FileBundle\Model\FileInterface;
 use MulerTech\FileBundle\Service\FileManagerInterface;
 use MulerTech\SeoBundle\Model\SocialCardSource;
 use MulerTech\SeoBundle\Model\SocialCardSourceProviderInterface;
+use Psr\Clock\ClockInterface;
 
 /**
  * Hands seo-bundle the featured image of an article, from which it derives the 1200x630
@@ -21,6 +22,7 @@ final readonly class BlogPostSocialCardProvider implements SocialCardSourceProvi
     public function __construct(
         private BlogPostRepository $repository,
         private FileManagerInterface $fileManager,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -30,7 +32,8 @@ final readonly class BlogPostSocialCardProvider implements SocialCardSourceProvi
     }
 
     /**
-     * An unpublished article has no public page, so nothing may expose its illustration.
+     * An article not visible yet, unpublished or scheduled, has no public page, so nothing
+     * may expose its illustration.
      */
     public function findSocialCardSource(string $id): ?SocialCardSource
     {
@@ -39,7 +42,7 @@ final readonly class BlogPostSocialCardProvider implements SocialCardSourceProvi
         $post = ctype_digit($id) ? $this->repository->find((int) $id) : null;
         $cover = $post?->getFeaturedImage();
 
-        if (null === $post || null === $cover || !$post->isPublished()) {
+        if (null === $post || null === $cover || !$post->isVisibleAt($this->clock->now())) {
             return null;
         }
 

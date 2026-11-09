@@ -16,11 +16,11 @@ use MulerTech\BlogBundle\Entity\AbstractBlogPost;
 class BlogPost extends AbstractBlogPost
 {
     #[ORM\Column(type: Types::TEXT, nullable: true)]
-    private ?string $excerpt = null;
+    private ?string $subtitle = null;
 
-    public function getExcerpt(): ?string
+    public function getSubtitle(): ?string
     {
-        return $this->excerpt;
+        return $this->subtitle;
     }
 
     public function getSeoAuthorName(): string
@@ -28,9 +28,9 @@ class BlogPost extends AbstractBlogPost
         return 'Jeanne Martin';
     }
 
-    public function setExcerpt(?string $excerpt): static
+    public function setSubtitle(?string $subtitle): static
     {
-        $this->excerpt = $excerpt;
+        $this->subtitle = $subtitle;
 
         return $this;
     }

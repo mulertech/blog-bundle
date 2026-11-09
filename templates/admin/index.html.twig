@@ -6,7 +6,11 @@
     <div class="container mx-auto max-w-6xl px-4 py-8">
         <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
             <h1 class="text-3xl font-bold text-gray-900">{{ 'admin.title'|trans({}, 'MulerTechBlogBundle') }}</h1>
-            <a href="{{ path('mulertech_blog_admin_new') }}" class="rounded-lg bg-gray-900 px-4 py-2 font-semibold text-white hover:bg-gray-700">{{ 'admin.new'|trans({}, 'MulerTechBlogBundle') }}</a>
+            <div class="flex items-center gap-4">
+                {% if categories_enabled %}<a href="{{ path('mulertech_blog_admin_category_index') }}" class="text-gray-900 underline">{{ 'admin.terms.categories'|trans({}, 'MulerTechBlogBundle') }}</a>{% endif %}
+                {% if tags_enabled %}<a href="{{ path('mulertech_blog_admin_tag_index') }}" class="text-gray-900 underline">{{ 'admin.terms.tags'|trans({}, 'MulerTechBlogBundle') }}</a>{% endif %}
+                <a href="{{ path('mulertech_blog_admin_new') }}" class="rounded-lg bg-gray-900 px-4 py-2 font-semibold text-white hover:bg-gray-700">{{ 'admin.new'|trans({}, 'MulerTechBlogBundle') }}</a>
+            </div>
         </div>
 
         <form method="get" action="{{ path('mulertech_blog_admin_index') }}" role="search" class="mb-6 flex gap-2">
@@ -35,7 +39,9 @@
                             <td class="px-4 py-3"><a href="{{ path('mulertech_blog_admin_edit', {id: post.id}) }}" class="font-semibold text-gray-900 hover:underline">{{ post.title }}</a></td>
                             {% if locales|length > 1 %}<td class="px-4 py-3 uppercase">{{ post.locale }}</td>{% endif %}
                             <td class="px-4 py-3">
-                                {% if post.published %}
+                                {% if post is mulertech_blog_scheduled %}
+                                    {{ 'admin.scheduled_on'|trans({'%date%': post.publishedAt|date('admin.datetime_format'|trans({}, 'MulerTechBlogBundle'))}, 'MulerTechBlogBundle') }}
+                                {% elseif post.published %}
                                     {{ 'admin.published_on'|trans({'%date%': post.publishedAt|date('blog.date_format'|trans({}, 'MulerTechBlogBundle'))}, 'MulerTechBlogBundle') }}
                                 {% else %}
                                     {{ 'admin.draft'|trans({}, 'MulerTechBlogBundle') }}

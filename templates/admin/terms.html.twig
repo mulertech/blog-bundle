@@ -1,0 +1,49 @@
+{% extends layout %}
+
+{% set title = (kind == 'category' ? 'admin.terms.categories' : 'admin.terms.tags')|trans({}, 'MulerTechBlogBundle') %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block body %}
+    <div class="container mx-auto max-w-5xl px-4 py-8">
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <h1 class="text-3xl font-bold text-gray-900">{{ title }}</h1>
+            <div class="flex items-center gap-4">
+                <a href="{{ path('mulertech_blog_admin_index') }}" class="text-gray-900 underline">{{ 'admin.title'|trans({}, 'MulerTechBlogBundle') }}</a>
+                <a href="{{ path('mulertech_blog_admin_' ~ kind ~ '_new') }}" class="rounded-lg bg-gray-900 px-4 py-2 font-semibold text-white hover:bg-gray-700">{{ (kind == 'category' ? 'admin.terms.new_category' : 'admin.terms.new_tag')|trans({}, 'MulerTechBlogBundle') }}</a>
+            </div>
+        </div>
+
+        {% if rows is empty %}
+            <p class="py-12 text-center text-gray-600">{{ 'admin.terms.empty'|trans({}, 'MulerTechBlogBundle') }}</p>
+        {% else %}
+            <table class="w-full overflow-hidden rounded-xl bg-white shadow">
+                <thead class="bg-gray-50 text-left text-sm text-gray-600">
+                    <tr>
+                        <th class="px-4 py-3">{{ 'admin.terms.name'|trans({}, 'MulerTechBlogBundle') }}</th>
+                        {% if locales|length > 1 %}<th class="px-4 py-3">{{ 'admin.form.locale'|trans({}, 'MulerTechBlogBundle') }}</th>{% endif %}
+                        <th class="px-4 py-3">{{ 'admin.terms.posts'|trans({}, 'MulerTechBlogBundle') }}</th>
+                        <th class="px-4 py-3"><span class="sr-only">{{ 'admin.delete'|trans({}, 'MulerTechBlogBundle') }}</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                        <tr class="border-t border-gray-100">
+                            <td class="px-4 py-3"><a href="{{ path('mulertech_blog_admin_' ~ kind ~ '_edit', {id: row.term.id}) }}" class="font-semibold text-gray-900 hover:underline">{{ row.term.name }}</a></td>
+                            {% if locales|length > 1 %}<td class="px-4 py-3 uppercase">{{ row.term.locale }}</td>{% endif %}
+                            <td class="px-4 py-3">{{ row.count }}</td>
+                            <td class="px-4 py-3 text-right">
+                                <form method="post" action="{{ path('mulertech_blog_admin_' ~ kind ~ '_delete', {id: row.term.id}) }}" data-mulertech-blog-confirm="{{ 'admin.terms.delete_confirm'|trans({'%name%': row.term.name}, 'MulerTechBlogBundle') }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('mulertech_blog_' ~ kind ~ '_delete_' ~ row.term.id) }}">
+                                    <button type="submit" class="text-sm text-red-600 hover:underline">{{ 'admin.delete'|trans({}, 'MulerTechBlogBundle') }}</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+
+    <script type="module" src="{{ asset('@mulertech/blog-bundle/admin.js') }}"></script>
+{% endblock %}

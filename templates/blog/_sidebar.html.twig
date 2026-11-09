@@ -1,3 +1,18 @@
+{% if categories is not empty %}
+    <section class="rounded-xl bg-white p-6 shadow-lg">
+        <h2 class="mb-4 text-xl font-bold text-gray-900">{{ 'blog.sidebar.categories'|trans({}, 'MulerTechBlogBundle') }}</h2>
+        <ul class="space-y-2">
+            {% for entry in categories %}
+                <li>
+                    <a href="{{ path('mulertech_blog_index', {category: entry.term.slug}) }}" class="flex items-center justify-between rounded p-2 text-gray-900 hover:bg-gray-50{{ category and category.id == entry.term.id ? ' font-semibold' : '' }}"{% if category and category.id == entry.term.id %} aria-current="page"{% endif %}>
+                        <span>{{ entry.term.name }}</span>
+                        <span class="text-sm text-gray-500">{{ entry.count }}</span>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    </section>
+{% endif %}
 {% for list in [
     {title: 'blog.sidebar.recent', posts: recent_posts},
     {title: 'blog.sidebar.popular', posts: popular_posts},

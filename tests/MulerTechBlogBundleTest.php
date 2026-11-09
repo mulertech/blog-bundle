@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace MulerTech\BlogBundle\Tests;
 
 use MulerTech\BlogBundle\Controller\BlogController;
+use MulerTech\BlogBundle\Controller\BlogFeedController;
 use MulerTech\BlogBundle\Controller\BlogFileController;
+use MulerTech\BlogBundle\Controller\BlogTermAdminController;
+use MulerTech\BlogBundle\Form\BlogTermType;
+use MulerTech\BlogBundle\Tests\Fixtures\ExtendedBlogTermType;
 use MulerTech\BlogBundle\Doctrine\BlogPostMetadataListener;
 use MulerTech\BlogBundle\Form\BlogPostType;
 use MulerTech\BlogBundle\MulerTechBlogBundle;
@@ -13,9 +17,12 @@ use MulerTech\BlogBundle\Repository\BlogPostRepository;
 use MulerTech\BlogBundle\Service\BlogPostPublisher;
 use MulerTech\BlogBundle\Service\SlugGenerator;
 use MulerTech\BlogBundle\Service\ViewCounter;
+use MulerTech\BlogBundle\Tests\Fixtures\Entity\BlogCategory;
 use MulerTech\BlogBundle\Tests\Fixtures\Entity\BlogPost;
+use MulerTech\BlogBundle\Tests\Fixtures\Entity\BlogTag;
 use MulerTech\BlogBundle\Tests\Fixtures\Entity\File;
 use MulerTech\BlogBundle\Tests\Fixtures\ExtendedBlogPostType;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use MulerTech\CspBundle\CspNonceGenerator;
@@ -76,6 +83,47 @@ final class MulerTechBlogBundleTest extends TestCase
         $this->load(['post_class' => File::class]);
     }
 
+    /**
+     * A site naming neither class has no category nor tag: no relation, no field, and the
+     * admin pages answer 404 naming the key to set.
+     */
+    public function testCategoriesAndTagsAreEnabledByNamingTheSiteClasses(): void
+    {
+        $without = $this->load(['post_class' => BlogPost::class]);
+        self::assertNull($without->getDefinition('mulertech_blog.doctrine.blog_post_metadata_listener')->getArgument('$categoryClass'));
+        self::assertNull($without->getDefinition('mulertech_blog.category_repository')->getArgument('$termClass'));
+
+        $with = $this->load(['post_class' => BlogPost::class, 'category_class' => BlogCategory::class, 'tag_class' => BlogTag::class]);
+        $listener = $with->getDefinition('mulertech_blog.doctrine.blog_post_metadata_listener');
+        self::assertSame([BlogCategory::class, BlogTag::class], [$listener->getArgument('$categoryClass'), $listener->getArgument('$tagClass')]);
+        self::assertSame(BlogCategory::class, $with->getDefinition('mulertech_blog.category_repository')->getArgument('$termClass'));
+        self::assertSame('mulertech_blog.tag_class', $with->getDefinition('mulertech_blog.tag_repository')->getArgument('$configKey'));
+        self::assertSame('tag', $with->getDefinition('mulertech_blog.controller.admin_tag')->getArgument('$kind'));
+        self::assertSame(BlogTermType::class, $with->getDefinition('mulertech_blog.controller.admin_tag')->getArgument('$formType'));
+        self::assertSame(ExtendedBlogTermType::class, $this->load(['post_class' => BlogPost::class, 'category_form_type' => ExtendedBlogTermType::class])->getDefinition('mulertech_blog.controller.admin_category')->getArgument('$formType'));
+    }
+
+    /**
+     * @return iterable<string, array{string, class-string}>
+     */
+    public static function termClassesOfTheWrongKind(): iterable
+    {
+        yield 'category' => ['category_class', BlogTag::class];
+        yield 'tag' => ['tag_class', BlogCategory::class];
+    }
+
+    /**
+     * @param class-string $class
+     */
+    #[DataProvider('termClassesOfTheWrongKind')]
+    public function testATermClassMustExtendTheMatchingBundleEntity(string $key, string $class): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('mulertech_blog.'.$key.' must name the site\'s entity extending');
+
+        $this->load(['post_class' => BlogPost::class, $key => $class]);
+    }
+
     public function testThePublicPagesExtendTheSiteBaseLayoutUnlessToldOtherwise(): void
     {
         self::assertSame('base.html.twig', $this->load(['post_class' => BlogPost::class])->getDefinition('mulertech_blog.controller.blog')->getArgument('$publicLayout'));
@@ -86,7 +134,13 @@ final class MulerTechBlogBundleTest extends TestCase
     {
         $container = $this->load(['post_class' => BlogPost::class]);
 
-        foreach (['mulertech_blog.controller.blog' => BlogController::class, 'mulertech_blog.controller.file' => BlogFileController::class] as $id => $class) {
+        foreach ([
+            'mulertech_blog.controller.blog' => BlogController::class,
+            'mulertech_blog.controller.file' => BlogFileController::class,
+            'mulertech_blog.controller.feed' => BlogFeedController::class,
+            'mulertech_blog.controller.admin_category' => BlogTermAdminController::class,
+            'mulertech_blog.controller.admin_tag' => BlogTermAdminController::class,
+        ] as $id => $class) {
             $definition = $container->getDefinition($id);
             self::assertSame($class, $definition->getClass());
             self::assertTrue($definition->isPublic(), $id);

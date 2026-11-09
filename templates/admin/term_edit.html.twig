@@ -1,0 +1,24 @@
+{% extends layout %}
+
+{% if kind == 'category' %}
+    {% set title = (term ? 'admin.terms.edit_category' : 'admin.terms.new_category')|trans({}, 'MulerTechBlogBundle') %}
+{% else %}
+    {% set title = (term ? 'admin.terms.edit_tag' : 'admin.terms.new_tag')|trans({}, 'MulerTechBlogBundle') %}
+{% endif %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block body %}
+    <div class="container mx-auto max-w-3xl px-4 py-8">
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <h1 class="text-3xl font-bold text-gray-900">{{ title }}</h1>
+            <a href="{{ path('mulertech_blog_admin_' ~ kind ~ '_index') }}" class="text-gray-900 underline">{{ 'admin.back'|trans({}, 'MulerTechBlogBundle') }}</a>
+        </div>
+
+        {% form_theme form '@MulerTechBlog/form/theme.html.twig' %}
+        {{ form_start(form, {attr: {class: 'space-y-6 rounded-xl bg-white p-6 shadow', novalidate: 'novalidate'}}) }}
+            {{ form_rest(form) }}
+            <button type="submit" class="rounded-lg bg-gray-900 px-6 py-3 font-semibold text-white hover:bg-gray-700">{{ 'admin.save'|trans({}, 'MulerTechBlogBundle') }}</button>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}

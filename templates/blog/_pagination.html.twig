@@ -1,5 +1,5 @@
 {% if page.pageCount > 1 %}
-    {% set query = search ? {q: search} : {} %}
+    {% set query = (search ? {q: search} : {})|merge(category ? {category: category.slug} : {})|merge(tag ? {tag: tag.slug} : {}) %}
     <nav aria-label="{{ 'blog.pagination.label'|trans({}, 'MulerTechBlogBundle') }}" class="mt-12 flex items-center justify-between gap-4">
         {% if page.hasPrevious %}
             <a href="{{ path('mulertech_blog_index', query|merge(page.number > 2 ? {page: page.number - 1} : {})) }}" rel="prev" class="rounded-lg bg-white px-4 py-2 font-semibold text-gray-900 shadow hover:bg-gray-50">{{ 'blog.pagination.previous'|trans({}, 'MulerTechBlogBundle') }}</a>

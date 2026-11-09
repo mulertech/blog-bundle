@@ -6,6 +6,7 @@ namespace MulerTech\BlogBundle\Service;
 
 use Doctrine\ORM\EntityManagerInterface;
 use MulerTech\BlogBundle\Entity\AbstractBlogPost;
+use MulerTech\BlogBundle\Storage\BlogFileTarget;
 use MulerTech\FileBundle\Model\FileInterface;
 use MulerTech\FileBundle\Model\FileUploaderInterface;
 use MulerTech\FileBundle\Service\FileManagerInterface;
@@ -16,10 +17,12 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 /**
  * The files of an article, stored through `mulertech/file-bundle`.
  *
- * The article is passed as the upload context, so the site's directory strategy can file
- * the media of its blog apart from the rest. A file belongs to one article: removing it
- * from the article, or deleting the article, deletes it from the storage too, so nothing
- * is left on disk that no page shows.
+ * Each file is stored under a name starting with its article's id (see BlogFileTarget). A
+ * file belongs to one article: removing it from the article, or deleting the article,
+ * deletes it from the storage too, so nothing is left on disk that no page shows.
+ *
+ * The uploader only feeds the file manager's log and a site's own file entity. It is the
+ * one given, an author for an API without session, else the logged-in user.
  */
 final readonly class BlogMediaManager
 {
@@ -49,13 +52,15 @@ final readonly class BlogMediaManager
      * Stored as WebP whatever the format sent: the browser crops to PNG, lossless and
      * several times heavier, and every visitor would download that weight.
      */
-    public function setCover(AbstractBlogPost $post, UploadedFile $image): void
+    public function setCover(AbstractBlogPost $post, UploadedFile $image, ?FileUploaderInterface $uploader = null): void
     {
         $previous = $post->getFeaturedImage();
+        $target = BlogFileTarget::cover($post);
+        $uploader = $this->uploader($uploader);
         $webp = $this->toWebp($image);
 
         try {
-            $post->setFeaturedImage($this->fileManager->upload($webp, $this->uploader(), $post, true));
+            $post->setFeaturedImage($this->fileManager->upload($webp, $uploader, $target, true));
         } finally {
             @unlink($webp->getPathname());
         }
@@ -86,12 +91,14 @@ final readonly class BlogMediaManager
      *
      * @throws FileException when an image cannot be decoded, naming the file
      */
-    public function attach(AbstractBlogPost $post, UploadedFile $file): FileInterface
+    public function attach(AbstractBlogPost $post, UploadedFile $file, ?FileUploaderInterface $uploader = null): FileInterface
     {
+        $target = BlogFileTarget::attachment($post, $file->getClientOriginalName());
+        $uploader = $this->uploader($uploader);
         $webp = $this->attachedImageAsWebp($file);
 
         try {
-            $attached = $this->fileManager->upload($webp ?? $file, $this->uploader(), $post, true);
+            $attached = $this->fileManager->upload($webp ?? $file, $uploader, $target, true);
         } finally {
             if (null !== $webp) {
                 @unlink($webp->getPathname());
@@ -130,12 +137,16 @@ final readonly class BlogMediaManager
         }
     }
 
-    private function uploader(): FileUploaderInterface
+    private function uploader(?FileUploaderInterface $given): FileUploaderInterface
     {
+        if (null !== $given) {
+            return $given;
+        }
+
         $user = $this->tokenStorage->getToken()?->getUser();
 
         if (!$user instanceof FileUploaderInterface) {
-            throw new \LogicException(sprintf('The files of an article are stored on behalf of the logged-in user, which must implement %s: %s does not.', FileUploaderInterface::class, null === $user ? 'no user is logged in, so this' : $user::class));
+            throw new \LogicException(sprintf('The files of an article are stored on behalf of the uploader passed to %s, else of the logged-in user, which must implement %s: %s.', self::class, FileUploaderInterface::class, null === $user ? 'no uploader was passed and no user is logged in' : $user::class.' does not'));
         }
 
         return $user;

@@ -120,9 +120,31 @@ final class SeoProvidersTest extends DatabaseTestCase
         self::assertNull($this->socialCards()->findSocialCardSource('12-ab'));
     }
 
+    /**
+     * A scheduled article stays out of search engines, `llms.txt` and the social platforms
+     * until its date, then enters them without anything to run.
+     */
+    public function testAScheduledArticleIsDeclaredOnceItsDateIsReached(): void
+    {
+        $post = $this->post('À venir', publishedAt: '2026-07-14 08:30', slug: 'a-venir');
+        $post->setFeaturedImage($this->cover('cover.webp'));
+        $this->entityManager->flush();
+        $sitemap = new BlogPostSitemapProvider($this->repository(), $this->urls());
+
+        self::assertCount(2, [...$sitemap->getUrls()]);
+        self::assertSame([], [...$this->llms()->getSections()]);
+        self::assertNull($this->socialCards()->findSocialCardSource((string) $post->getId()));
+
+        $this->clock->modify('2026-07-14 08:30');
+
+        self::assertSame('https://example.com/fr/blog/a-venir', [...$sitemap->getUrls()][2]->getLoc());
+        self::assertCount(1, [...$this->llms()->getSections()]);
+        self::assertNotNull($this->socialCards()->findSocialCardSource((string) $post->getId()));
+    }
+
     private function repository(): BlogPostRepository
     {
-        return new BlogPostRepository($this->entityManager, BlogPost::class);
+        return new BlogPostRepository($this->entityManager, BlogPost::class, $this->clock);
     }
 
     private function urls(): PostUrlGenerator
@@ -146,7 +168,7 @@ final class SeoProvidersTest extends DatabaseTestCase
         $fileManager = $this->createStub(FileManagerInterface::class);
         $fileManager->method('getAbsolutePath')->willReturnCallback(static fn (FileInterface $file): string => '/storage/'.$file->getStoredFilename());
 
-        return new BlogPostSocialCardProvider($this->repository(), $fileManager);
+        return new BlogPostSocialCardProvider($this->repository(), $fileManager, $this->clock);
     }
 
     private function cover(string $storedFilename): File

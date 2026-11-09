@@ -32,6 +32,11 @@ mulertech_blog_admin_publish:
     methods: [POST]
     requirements: { id: '\d+' }
 
+mulertech_blog_admin_schedule:
+    path: /{id}/schedule
+    controller: mulertech_blog.controller.admin::schedule
+    methods: [POST]
+    requirements: { id: '\d+' }
 mulertech_blog_admin_unpublish:
     path: /{id}/unpublish
     controller: mulertech_blog.controller.admin::unpublish
@@ -55,3 +60,41 @@ mulertech_blog_admin_file:
     controller: mulertech_blog.controller.admin::file
     methods: [GET]
     requirements: { id: '\d+', fileId: '\d+' }
+
+mulertech_blog_admin_category_index:
+    path: /categories
+    controller: mulertech_blog.controller.admin_category::index
+    methods: [GET]
+mulertech_blog_admin_category_new:
+    path: /categories/new
+    controller: mulertech_blog.controller.admin_category::new
+    methods: [GET, POST]
+mulertech_blog_admin_category_edit:
+    path: /categories/{id}
+    controller: mulertech_blog.controller.admin_category::edit
+    methods: [GET, POST]
+    requirements: { id: '\d+' }
+mulertech_blog_admin_category_delete:
+    path: /categories/{id}/delete
+    controller: mulertech_blog.controller.admin_category::delete
+    methods: [POST]
+    requirements: { id: '\d+' }
+
+mulertech_blog_admin_tag_index:
+    path: /tags
+    controller: mulertech_blog.controller.admin_tag::index
+    methods: [GET]
+mulertech_blog_admin_tag_new:
+    path: /tags/new
+    controller: mulertech_blog.controller.admin_tag::new
+    methods: [GET, POST]
+mulertech_blog_admin_tag_edit:
+    path: /tags/{id}
+    controller: mulertech_blog.controller.admin_tag::edit
+    methods: [GET, POST]
+    requirements: { id: '\d+' }
+mulertech_blog_admin_tag_delete:
+    path: /tags/{id}/delete
+    controller: mulertech_blog.controller.admin_tag::delete
+    methods: [POST]
+    requirements: { id: '\d+' }

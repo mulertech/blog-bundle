@@ -8,11 +8,14 @@ use MulerTech\BlogBundle\Entity\AbstractBlogPost;
 use MulerTech\BlogBundle\Service\PostUrlGenerator;
 use MulerTech\CspBundle\CspNonceGenerator;
 use MulerTech\FileBundle\Model\FileInterface;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\Clock\NativeClock;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
 use Twig\TwigFunction;
+use Twig\TwigTest;
 
 final class BlogExtension extends AbstractExtension
 {
@@ -35,6 +38,7 @@ final class BlogExtension extends AbstractExtension
         private readonly RequestStack $requestStack,
         private readonly ?CspNonceGenerator $nonceGenerator = null,
         private readonly string $nonceHandle = 'main',
+        private readonly ClockInterface $clock = new NativeClock(),
     ) {
     }
 
@@ -43,10 +47,16 @@ final class BlogExtension extends AbstractExtension
         return [new TwigFilter('mulertech_blog_content', $this->content(...))];
     }
 
+    public function getTests(): array
+    {
+        return [new TwigTest('mulertech_blog_scheduled', $this->isScheduled(...))];
+    }
+
     public function getFunctions(): array
     {
         return [
             new TwigFunction('mulertech_blog_post_url', $this->postUrls->post(...)),
+            new TwigFunction('mulertech_blog_feed_url', $this->postUrls->feed(...)),
             new TwigFunction('mulertech_blog_file_url', $this->fileUrl(...)),
             new TwigFunction('mulertech_blog_csp_nonce', $this->cspNonce(...)),
         ];
@@ -96,6 +106,14 @@ final class BlogExtension extends AbstractExtension
         }
 
         return $this->urlGenerator->generate('mulertech_blog_file', ['slug' => $post->getSlug(), 'id' => $id]);
+    }
+
+    /**
+     * Published, but hidden from visitors until a date still to come.
+     */
+    public function isScheduled(AbstractBlogPost $post): bool
+    {
+        return $post->isScheduledAt($this->clock->now());
     }
 
     /**

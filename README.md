@@ -30,7 +30,7 @@ From a Symfony application with Doctrine, Twig and AssetMapper, in this order. E
 
 2. Set up `mulertech/file-bundle`, which stores the featured images and attached files: a file entity extending `MulerTech\FileBundle\Entity\AbstractFile`, and its `storage_directory` and `file_class`, as its README says. The logged-in user who writes articles must implement `MulerTech\FileBundle\Model\FileUploaderInterface`. In production, `storage_directory` must be a persistent volume, included in the backups: inside the container alone, it is emptied by every deployment, and the articles lose their images.
 3. Set up `mulertech/seo-bundle`, which declares the pages to search engines and derives the sharing images: its configuration, a `SeoCompanyInfoProviderInterface` service and its routes, as its README says. Its `default_image` is shared for an article without featured image.
-4. Create the blog post entity and point `FileInterface` at the file entity ([1. The blog post entity](#1-the-blog-post-entity)).
+4. Create the blog post entity and point `FileInterface` at the file entity ([1. The blog post entity](#1-the-blog-post-entity)). For categories and tags, create their entities too ([Categories and tags](#categories-and-tags)).
 5. Name the entity in `config/packages/mulertech_blog.yaml` ([Configuration](#configuration)).
 6. Import the public and admin routes ([Routes](#routes)), and keep the admin prefix behind the site's firewall ([5. Administration](#5-administration)).
 7. Generate and run the migration: `bin/console doctrine:migrations:diff`, then `doctrine:migrations:migrate`. It creates the blog's table, its join table to the files, the unique constraint on `(slug, locale)` and the index on `translation_group`.
@@ -59,6 +59,13 @@ mulertech_blog:
     # Languages the articles are written in. Defaults to the site's default locale; with
     # more than one, the admin asks for the language of each article.
     locales: [fr, en]
+    # The site's category and tag entities (see below). Without them, the blog has no
+    # categories nor tags: no column, no field, no filter.
+    category_class: App\Entity\BlogCategory
+    tag_class: App\Entity\BlogTag
+    # Forms of the categories and tags in the admin, to add the site's own fields: a type
+    # whose getParent() returns MulerTech\BlogBundle\Form\BlogTermType.
+    category_form_type: App\Form\BlogCategoryType
 ```
 
 ### Routes
@@ -90,6 +97,11 @@ mulertech_blog_admin:
 | `mulertech_blog_index` | `/blog` | The list, `?q=` to search, `?page=` from 2 on |
 | `mulertech_blog_show` | `/blog/{slug}` | An article |
 | `mulertech_blog_file` | `/blog/{slug}/files/{id}` | The featured image or an attached file of a published article |
+| `mulertech_blog_feed` | `/blog/feed.xml` | The Atom feed of the language |
+
+The list also takes `?category=<slug>` and `?tag=<slug>`. A slug unknown in the language, or a filter on a site without categories or tags, answers 404.
+
+The admin routes manage the articles under the admin prefix, the categories under `/categories` and the tags under `/tags` of it. On a site without categories or tags, their pages answer 404 naming the key to set.
 
 The pages read the articles of the request's locale: a single-language site serves its default locale, a multilingual one the `{_locale}` of its prefix. A draft, an article of another language, a page number that is not a positive integer or lies beyond the last page answer 404.
 
@@ -138,17 +150,45 @@ doctrine:
 | `id` | `id` | Integer |
 | `title`, `slug`, `content` | same | `content` is Markdown |
 | `metaDescription` | `meta_description` | |
+| `excerpt` | `excerpt` | Plain text, shown on the article's card; the description for search engines when the meta description is empty |
+| `aiGenerated` | `ai_generated` | Shows the label of the European Union on the article (AI Act, article 50 §4). Defaults to `false`, in SQL too, so the articles a table already holds are marked as written by hand: mark a generated one in the admin |
 | `featuredImage` | `featured_image_id` | |
 | `files` | join table `<entity>_file` | `blog_post_file` for `BlogPost` under the underscore naming strategy |
-| `isPublished`, `publishedAt` | `is_published`, `published_at` | `publish()` keeps the date of first publication, so unpublishing then publishing again never moves an article to the top of the list |
+| `isPublished`, `publishedAt` | `is_published`, `published_at` | `publish()` keeps the date of first publication, so unpublishing then publishing again never moves an article to the top of the list. A date still to come is a scheduled publication: `schedule()` sets it, and the article stays out of every public page until then |
 | `readingTime`, `viewCount` | `reading_time`, `view_count` | |
 | `createdAt`, `updatedAt` | `created_at`, `updated_at` | Set on persist and on update |
 | `locale` | `locale` | The language the article is written in |
 | `translationGroup` | `translation_group` | Shared by the versions of one article in several languages; `setTranslationOf()` joins the group of another article |
+| `category` | `category_id` | Mapped when the site names `category_class`, nullable |
+| `tags` | join table `<entity>_<tag entity>` | Mapped when the site names `tag_class`: `blog_post_blog_tag` for `BlogPost` and `BlogTag` |
 
 Column names are fixed rather than left to the naming strategy, so an existing table keeps its columns.
 
 The bundle adds to the entity's table a unique constraint on `(slug, locale)` and an index on `translation_group`. A mapped superclass cannot carry them: Doctrine ignores table constraints declared there.
+
+#### Categories and tags
+
+Both are optional. A site wanting them declares an entity for each, extending the bundle's, and names them in the configuration:
+
+```php
+namespace App\Entity;
+
+use Doctrine\ORM\Mapping as ORM;
+use MulerTech\BlogBundle\Entity\AbstractBlogCategory;
+
+#[ORM\Entity]
+#[ORM\Table(name: 'blog_categories')]
+class BlogCategory extends AbstractBlogCategory
+{
+    // Fields of this site only: a colour, a position...
+}
+```
+
+`AbstractBlogTag` is extended the same way. Both carry `name`, `slug`, `locale` and `translation_group`; a category also has a `description`, shown above its articles. The bundle adds a unique constraint on `(slug, locale)` and an index on `translation_group` to each table, and maps `category` and `tags` on the article: a mapped superclass cannot target classes it does not know, so these relations exist only once the classes are named. Without them, `getCategory()` stays null and `getTags()` empty, whatever is set.
+
+An article has at most one category, which may be left empty; a site wanting it required redefines the `category` field in its form type with `required: true`. A category still holding articles cannot be deleted from the admin; a tag can, and leaves its articles.
+
+A term belongs to one language, like an article: an article is filed under terms of its own language, and the admin refuses one of another language, naming both. The versions of a term in other languages share its `translationGroup`.
 
 #### Multilingual model
 
@@ -199,11 +239,15 @@ Each part of a page is a template of its own, so a site replaces only what diffe
 | `blog/index.html.twig` | The list page; its `mulertech_blog_header` block holds the heading |
 | `blog/show.html.twig` | The article page |
 | `blog/_search.html.twig` | The search form |
-| `blog/_card.html.twig` | An article in the list: square thumbnail cut from the centre of the featured image, title, date, reading time, views, "Lire la suite" |
-| `blog/_sidebar.html.twig` | The recent and popular articles |
+| `blog/_filter.html.twig` | The category or tag the list is filtered by, with the category's description |
+| `blog/_card.html.twig` | An article in the list: square thumbnail cut from the centre of the featured image, category, title, date, reading time, views, excerpt, "Lire la suite" |
+| `blog/_sidebar.html.twig` | The categories holding articles, with their count, then the recent and popular articles |
 | `blog/_pagination.html.twig` | Previous and next pages |
 | `blog/_share.html.twig` | Sharing on LinkedIn, X and Facebook |
 | `blog/_navigation.html.twig` | Previous article, back to the list, next article |
+| `blog/feed.xml.twig` | The Atom feed |
+
+The article page shows its category and tags, each a link to the filtered list, and the label of the European Union when `aiGenerated` is set. The label is an `<img>` served by the site's AssetMapper, `@mulertech/blog-bundle/images/eu-ai-label-ai-generated.svg`, rather than inline: the official file declares generic classes, `.cls-1` and `.cls-2`, which would collide with the site's stylesheet.
 
 A replaced template addresses the article's files with `mulertech_blog_file_url(post, file)` rather than `path('mulertech_blog_file', …)`: the function gives the public address, and during an admin preview the admin one. The public route answers only for a published article, and the admin is often signed in behind a firewall the public pages do not share, so a template building the public address shows a draft's images broken in the preview.
 
@@ -226,7 +270,9 @@ The admin lists every article, drafts and every language included, creates, edit
 
 Every admin action checks `admin_role` itself, whatever the firewall says, and every change requires a CSRF token. Keep the admin prefix behind the site's firewall all the same, so that a visitor is sent to the login page rather than refused.
 
-Files are stored through `mulertech/file-bundle` on behalf of the logged-in user, which must implement `MulerTech\FileBundle\Model\FileUploaderInterface`; the article is passed as the upload context, so the site's directory strategy can file the blog's media apart. A file belongs to one article: removing it from the article, or deleting the article, deletes it from the storage.
+Files are stored through `mulertech/file-bundle` under a name starting with the article's id, the same on every site whatever its directory strategy: `blog/images/image-12-<unique>.webp` for a cover, `blog/files/file-12-<name>-<unique>.pdf` for an attached file. A file on disk is matched to its article at a glance, whoever uploaded it. A file belongs to one article: removing it from the article, or deleting the article, deletes it from the storage.
+
+The uploader is the logged-in user, which must implement `MulerTech\FileBundle\Model\FileUploaderInterface`. A site storing files without a session, an API fed by an automation or an import, passes the uploader itself: `BlogMediaManager::setCover($post, $image, $author)` and `attach($post, $file, $author)`. The uploader is not stored on the file by file-bundle: it only feeds the upload log, and the site's own file entity when it keeps one.
 
 | Feature | Behaviour |
 |---|---|
@@ -235,6 +281,9 @@ Files are stored through `mulertech/file-bundle` on behalf of the logged-in user
 | Attached files | Listed with an "insert" button that writes `![name](blog-file:12)` for an image, `[name](blog-file:12)` for a document, where the cursor stands in the content |
 | Attached images | A JPEG or PNG is stored as WebP, turned upright from its EXIF orientation and brought down to 1600 px wide when wider; a WebP is only brought down. A GIF keeps its animation and an SVG stays a vector: both are stored as sent, like documents. An image that cannot be decoded is refused, naming the file |
 | Publication | "Publier" and "Dépublier" buttons; the date of first publication is kept |
+| Scheduled publication | "Programmer" with a date and time to come, in the server's time zone, for an article never published or still waiting: it appears on every public page at that date, without any task to run. "Publier maintenant" brings a scheduled article forward. An article published before keeps its date and cannot be scheduled |
+| Categories and tags | A category to choose and tags to tick, on a site naming their classes; their own pages list, create, edit and delete them, with the number of articles each holds |
+| Excerpt and AI label | An excerpt field, and a box marking the article as generated by an AI, which shows the label of the European Union on its page |
 | Preview | "Aperçu" opens the article in the site's public template, drafts included, from its last saved version, under a banner saying so. Its route sits under the admin prefix, so only the admin reaches it; it counts no view and sends `X-Robots-Tag: noindex` |
 
 The content refers to an attached file as `blog-file:<id>` rather than by its address, which carries the slug and the language prefix: correcting a slug would otherwise break every image of the article. The `mulertech_blog_content` Twig filter turns these references into addresses; the article template applies it before `markdown_to_html`.
@@ -255,7 +304,7 @@ final class BlogPostType extends AbstractType
 {
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
-        $builder->add('excerpt', TextareaType::class, ['required' => false]);
+        $builder->add('subtitle', TextareaType::class, ['required' => false]);
     }
 
     public function getParent(): string
@@ -284,12 +333,15 @@ The blog relies on `mulertech/seo-bundle`, configured and with its routes import
 
 | Page or file | What the blog declares |
 |---|---|
-| List | Title and description (the `blog.title` and `blog.meta.description` labels, to reword in the site's translations). A search points its canonical at the list, so no query is indexed as a page of its own |
-| Article | Title, meta description, `og:type` `article`, publication and modification dates, author, and an `hreflang` link per published version in another language |
+| List | Title and description (the `blog.title` and `blog.meta.description` labels, to reword in the site's translations). A search or a filter points its canonical at the list, so no query is indexed as a page of its own |
+| Article | Title, meta description (the excerpt when it is empty), `og:type` `article`, publication and modification dates, author, and an `hreflang` link per published version in another language |
 | Article image | The 1200×630 JPEG card seo-bundle derives from the featured image, under the social card type `blog`; without featured image, the site's `default_image` |
 | Structured data | A schema.org `BlogPosting` (headline, author, dates, description) |
 | Sitemap | The list of each language, then every published article, dated by its last change |
 | `llms.txt` | A section listing the published articles with their meta description |
+| Feed | `/blog/feed.xml`, the 20 latest articles of the language with their excerpt, announced by a `<link rel="alternate">` on the list and on each article |
+
+A scheduled article enters all of them on its date: the queries read the clock, nothing has to run.
 
 With `mulertech/csp-bundle` installed, the structured data script carries the nonce of its `main` handle; without it, no nonce, and the site's policy is its own to adapt.
 

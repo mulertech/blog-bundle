@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace MulerTech\BlogBundle\Tests\Service;
 
 use MulerTech\BlogBundle\Service\BlogMediaManager;
+use MulerTech\BlogBundle\Storage\BlogFileTarget;
 use MulerTech\BlogBundle\Tests\DatabaseTestCase;
 use MulerTech\BlogBundle\Tests\Fixtures\AdminUser;
 use MulerTech\BlogBundle\Tests\Fixtures\Entity\File;
@@ -54,7 +55,41 @@ final class BlogMediaManagerTest extends DatabaseTestCase
         self::assertSame('image/webp', $cover->getMimeType());
         self::assertSame('image/webp', getimagesize($this->fileManager->getAbsolutePath($cover))['mime'] ?? null);
         self::assertInstanceOf(AdminUser::class, $this->fileManager->uploads[0]['uploader']);
-        self::assertSame($post, $this->fileManager->uploads[0]['context']);
+    }
+
+    /**
+     * The article's id starts the name of each of its files, whoever uploaded them, so a
+     * file on disk is matched to its article at a glance.
+     */
+    public function testTheFilesOfAnArticleAreNamedAfterIt(): void
+    {
+        $post = $this->post('Illustré');
+        $id = $post->getId();
+
+        $this->manager()->setCover($post, $this->png('Couverture.png', 1200, 675));
+        $this->manager()->attach($post, new UploadedFile($this->text('Programme du séjour.'), 'Programme du séjour.txt', 'text/plain', test: true));
+
+        $cover = $this->fileManager->uploads[0]['context'];
+        $attachment = $this->fileManager->uploads[1]['context'];
+        self::assertInstanceOf(BlogFileTarget::class, $cover);
+        self::assertInstanceOf(BlogFileTarget::class, $attachment);
+        self::assertSame(['blog/images', 'image-'.$id.'-'], [$cover->getRelativeDirectory(), $cover->getFilenamePrefix()]);
+        self::assertSame(['blog/files', 'file-'.$id.'-programme-du-sejour-'], [$attachment->getRelativeDirectory(), $attachment->getFilenamePrefix()]);
+    }
+
+    /**
+     * An API without session, an import, stores the files on behalf of the author it names.
+     */
+    public function testTheUploaderGivenStoresTheFilesWithNobodyLoggedIn(): void
+    {
+        $this->tokenStorage->setToken(new NullToken());
+        $author = new AdminUser();
+        $post = $this->post('Importé');
+
+        $this->manager()->setCover($post, $this->png('a.png', 1200, 675), $author);
+        $this->manager()->attach($post, $this->png('b.png', 10, 10), $author);
+
+        self::assertSame([$author, $author], array_column($this->fileManager->uploads, 'uploader'));
     }
 
     public function testATransparentCoverKeepsItsTransparency(): void
@@ -231,8 +266,7 @@ final class BlogMediaManagerTest extends DatabaseTestCase
     }
 
     /**
-     * The file bundle files every upload under its uploader; with nobody to name, the
-     * failure says what the user is expected to be.
+     * With no uploader given and nobody to name, the failure says what is expected.
      */
     public function testAUserThatCannotUploadIsNamed(): void
     {
@@ -249,7 +283,7 @@ final class BlogMediaManagerTest extends DatabaseTestCase
         $this->tokenStorage->setToken(new NullToken());
 
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('no user is logged in');
+        $this->expectExceptionMessage('no uploader was passed and no user is logged in');
 
         $this->manager()->attach($this->post('Article'), $this->png('a.png', 10, 10));
     }
@@ -291,6 +325,14 @@ final class BlogMediaManagerTest extends DatabaseTestCase
         file_put_contents($path, $jpeg);
 
         return new UploadedFile($path, $name, 'image/jpeg', test: true);
+    }
+
+    private function text(string $content): string
+    {
+        $path = (string) tempnam(sys_get_temp_dir(), 'upload');
+        file_put_contents($path, $content);
+
+        return $path;
     }
 
     private function webp(string $name, int $width, int $height): UploadedFile

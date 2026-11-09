@@ -3,6 +3,12 @@ mulertech_blog_index:
     controller: mulertech_blog.controller.blog::index
     methods: [GET]
 
+# Before the article route, whose slug would otherwise take `feed.xml`.
+mulertech_blog_feed:
+    path: /feed.xml
+    controller: mulertech_blog.controller.feed
+    methods: [GET]
+
 mulertech_blog_file:
     path: /{slug}/files/{id}
     controller: mulertech_blog.controller.file

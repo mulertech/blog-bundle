@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="{{ locale }}">
+    <title>{{ 'blog.title'|trans({}, 'MulerTechBlogBundle') }}</title>
+    <subtitle>{{ 'blog.meta.description'|trans({}, 'MulerTechBlogBundle') }}</subtitle>
+    <id>{{ index_url }}</id>
+    <link rel="self" type="application/atom+xml" href="{{ feed_url }}"/>
+    <link rel="alternate" type="text/html" href="{{ index_url }}"/>
+    <updated>{{ updated|date(constant('DATE_ATOM')) }}</updated>
+    {% for post in posts %}
+        <entry>
+            <title>{{ post.title }}</title>
+            <id>{{ mulertech_blog_post_url(post, true) }}</id>
+            <link rel="alternate" type="text/html" href="{{ mulertech_blog_post_url(post, true) }}"/>
+            <published>{{ post.publishedAt|date(constant('DATE_ATOM')) }}</published>
+            <updated>{{ (post.updatedAt ?? post.publishedAt)|date(constant('DATE_ATOM')) }}</updated>
+            <author><name>{{ post.seoAuthorName }}</name></author>
+            {% if post.seoExcerpt %}<summary>{{ post.seoExcerpt }}</summary>{% endif %}
+        </entry>
+    {% endfor %}
+</feed>

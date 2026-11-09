@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace MulerTech\BlogBundle\Tests\Controller;
 
 use MulerTech\BlogBundle\Repository\BlogPostRepository;
+use MulerTech\BlogBundle\Repository\BlogTermRepository;
+use MulerTech\BlogBundle\Tests\Fixtures\Entity\BlogCategory;
+use MulerTech\BlogBundle\Tests\Fixtures\Entity\BlogTag;
 use MulerTech\BlogBundle\Service\PostUrlGenerator;
 use MulerTech\BlogBundle\Tests\DatabaseTestCase;
 use MulerTech\BlogBundle\Tests\Fixtures\Entity\BlogPost;
@@ -26,6 +29,10 @@ use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Translation\Loader\YamlFileLoader as TranslationYamlLoader;
 use Symfony\Component\Translation\Translator;
 use Twig\Environment;
+use Symfony\Bridge\Twig\Extension\AssetExtension;
+use Symfony\Component\Asset\Package;
+use Symfony\Component\Asset\Packages;
+use Symfony\Component\Asset\VersionStrategy\EmptyVersionStrategy;
 use Twig\Extra\Markdown\LeagueMarkdown;
 use Twig\Extra\Markdown\MarkdownExtension;
 use Twig\Extra\Markdown\MarkdownRuntime;
@@ -69,8 +76,9 @@ abstract class PublicPageTestCase extends DatabaseTestCase
         $this->urlGenerator = new UrlGenerator($routes, new RequestContext(host: 'example.com', scheme: 'https', parameters: ['_locale' => 'fr']));
         $this->twig = new Environment($this->templates, ['strict_variables' => true]);
         $this->twig->addExtension(new RoutingExtension($this->urlGenerator));
+        $this->twig->addExtension(new AssetExtension(new Packages(new Package(new EmptyVersionStrategy()))));
         $this->twig->addExtension(new TranslationExtension($this->translator));
-        $this->twig->addExtension(new BlogExtension($this->urlGenerator, $this->postUrls(), new RequestStack()));
+        $this->twig->addExtension(new BlogExtension($this->urlGenerator, $this->postUrls(), new RequestStack(), clock: $this->clock));
         $this->twig->addExtension(new SeoExtension(new SchemaOrgService($company, $this->requestStack), $this->requestStack));
         $this->twig->addExtension(new MarkdownExtension());
         $this->twig->addRuntimeLoader(new FactoryRuntimeLoader([MarkdownRuntime::class => static fn (): MarkdownRuntime => new MarkdownRuntime(new LeagueMarkdown())]));
@@ -98,8 +106,18 @@ abstract class PublicPageTestCase extends DatabaseTestCase
         return new PostUrlGenerator($this->urlGenerator, $locales);
     }
 
+    protected function categories(bool $enabled = true): BlogTermRepository
+    {
+        return new BlogTermRepository($this->entityManager, $enabled ? BlogCategory::class : null, 'mulertech_blog.category_class');
+    }
+
+    protected function tags(bool $enabled = true): BlogTermRepository
+    {
+        return new BlogTermRepository($this->entityManager, $enabled ? BlogTag::class : null, 'mulertech_blog.tag_class');
+    }
+
     protected function repository(): BlogPostRepository
     {
-        return new BlogPostRepository($this->entityManager, BlogPost::class);
+        return new BlogPostRepository($this->entityManager, BlogPost::class, $this->clock);
     }
 }

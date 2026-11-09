@@ -18,6 +18,8 @@ use Doctrine\ORM\Tools\ResolveTargetEntityListener;
 use MulerTech\BlogBundle\Doctrine\BlogPostMetadataListener;
 use MulerTech\BlogBundle\Entity\AbstractBlogPost;
 use MulerTech\BlogBundle\Tests\Fixtures\Entity\BlogPost;
+use MulerTech\BlogBundle\Tests\Fixtures\Entity\BlogCategory;
+use MulerTech\BlogBundle\Tests\Fixtures\Entity\BlogTag;
 use MulerTech\BlogBundle\Tests\Fixtures\Entity\File;
 use MulerTech\FileBundle\Model\FileInterface;
 use PHPUnit\Framework\TestCase;
@@ -42,6 +44,8 @@ final class BlogPostMetadataListenerTest extends TestCase
             'slug' => 'slug',
             'content' => 'content',
             'metaDescription' => 'meta_description',
+            'excerpt' => 'excerpt',
+            'aiGenerated' => 'ai_generated',
             'isPublished' => 'is_published',
             'publishedAt' => 'published_at',
             'readingTime' => 'reading_time',
@@ -50,7 +54,7 @@ final class BlogPostMetadataListenerTest extends TestCase
             'updatedAt' => 'updated_at',
             'locale' => 'locale',
             'translationGroup' => 'translation_group',
-            'excerpt' => 'excerpt',
+            'subtitle' => 'subtitle',
         ], array_combine($metadata->getFieldNames(), array_map($metadata->getColumnName(...), $metadata->getFieldNames())));
         self::assertSame('featured_image_id', $metadata->getSingleAssociationJoinColumnName('featuredImage'));
     }
@@ -98,6 +102,47 @@ final class BlogPostMetadataListenerTest extends TestCase
         self::assertSame(File::class, $metadata->getAssociationTargetClass('featuredImage'));
     }
 
+    /**
+     * The names Doctrine gives any relation, those of mulertech's existing tables.
+     */
+    public function testTheCategoryAndTagsOfTheSiteAreMappedOnceNamed(): void
+    {
+        $metadata = $this->entityManager(terms: true)->getClassMetadata(BlogPost::class);
+        $tags = $metadata->getAssociationMapping('tags');
+
+        self::assertSame(BlogCategory::class, $metadata->getAssociationTargetClass('category'));
+        self::assertSame('category_id', $metadata->getSingleAssociationJoinColumnName('category'));
+        self::assertInstanceOf(ManyToManyOwningSideMapping::class, $tags);
+        self::assertSame(BlogTag::class, $tags->targetEntity);
+        self::assertSame('blog_post_blog_tag', $tags->joinTable->name);
+        self::assertSame('blog_post_id', $tags->joinTable->joinColumns[0]->name);
+        self::assertSame('blog_tag_id', $tags->joinTable->inverseJoinColumns[0]->name);
+        self::assertSame('CASCADE', $tags->joinTable->inverseJoinColumns[0]->onDelete);
+    }
+
+    public function testASiteWithoutCategoryNorTagHasNeitherRelation(): void
+    {
+        $metadata = $this->entityManager()->getClassMetadata(BlogPost::class);
+
+        self::assertFalse($metadata->hasAssociation('category'));
+        self::assertFalse($metadata->hasAssociation('tags'));
+    }
+
+    public function testATermIsUniquePerLanguage(): void
+    {
+        foreach ([BlogCategory::class, BlogTag::class] as $class) {
+            $metadata = $this->entityManager(terms: true)->getClassMetadata($class);
+
+            self::assertContains(['columns' => ['slug', 'locale']], $metadata->table['uniqueConstraints'] ?? []);
+            self::assertContains(['columns' => ['translation_group']], $metadata->table['indexes'] ?? []);
+        }
+
+        self::assertSame(['id', 'name', 'slug', 'locale', 'translation_group', 'description', 'color'], array_map(
+            $this->entityManager(terms: true)->getClassMetadata(BlogCategory::class)->getColumnName(...),
+            $this->entityManager(terms: true)->getClassMetadata(BlogCategory::class)->getFieldNames(),
+        ));
+    }
+
     public function testOtherEntitiesAreLeftAlone(): void
     {
         $metadata = $this->entityManager()->getClassMetadata(File::class);
@@ -106,7 +151,7 @@ final class BlogPostMetadataListenerTest extends TestCase
         self::assertArrayNotHasKey('indexes', $metadata->table);
     }
 
-    private function entityManager(NamingStrategy $namingStrategy = new UnderscoreNamingStrategy(\CASE_LOWER, true), bool $resolverFirst = true): EntityManager
+    private function entityManager(NamingStrategy $namingStrategy = new UnderscoreNamingStrategy(\CASE_LOWER, true), bool $resolverFirst = true, bool $terms = false): EntityManager
     {
         $configuration = new Configuration();
         $configuration->setMetadataDriverImpl(new AttributeDriver([
@@ -123,9 +168,9 @@ final class BlogPostMetadataListenerTest extends TestCase
 
         if ($resolverFirst) {
             $eventManager->addEventSubscriber($resolveTargetEntities);
-            $eventManager->addEventListener(Events::loadClassMetadata, new BlogPostMetadataListener());
+            $eventManager->addEventListener(Events::loadClassMetadata, ($terms ? new BlogPostMetadataListener(BlogCategory::class, BlogTag::class) : new BlogPostMetadataListener()));
         } else {
-            $eventManager->addEventListener(Events::loadClassMetadata, new BlogPostMetadataListener());
+            $eventManager->addEventListener(Events::loadClassMetadata, ($terms ? new BlogPostMetadataListener(BlogCategory::class, BlogTag::class) : new BlogPostMetadataListener()));
             $eventManager->addEventSubscriber($resolveTargetEntities);
         }
 

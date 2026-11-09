@@ -15,7 +15,11 @@ blog:
         read_more: Lire la suite
         reading_time: '%minutes% min'
         views: '{0}Aucune vue|{1}1 vue|]1,Inf[%count% vues'
+    filter:
+        category: 'Catégorie : %name%'
+        tag: 'Tag : %name%'
     sidebar:
+        categories: Catégories
         recent: Articles récents
         popular: Articles populaires
     pagination:
@@ -27,6 +31,9 @@ blog:
         cover_alt: 'Image de couverture : %title%'
         published_on: Publié le %date%
         reading_time: '%minutes% min de lecture'
+        tags: Tags de l'article
+        ai_generated: Contenu généré par IA
+        ai_label_alt: 'Label officiel de l''Union européenne : contenu généré par IA'
     share:
         title: Partager cet article
     navigation:
@@ -44,8 +51,13 @@ admin:
     views: Vues
     draft: Brouillon
     published_on: Publié le %date%
+    scheduled_on: Programmé pour le %date%
+    datetime_format: d/m/Y à H:i
     view: Voir l'article
     publish: Publier
+    publish_now: Publier maintenant
+    schedule: Programmer
+    schedule_label: Publier le
     unpublish: Dépublier
     delete: Supprimer
     delete_confirm: 'Supprimer définitivement « %title% » et ses fichiers ?'
@@ -58,9 +70,35 @@ admin:
         content: Contenu
         meta_description: Meta description
         meta_description_help: 150 à 160 caractères, affichés par les moteurs de recherche sous le titre.
+        excerpt: Extrait
+        excerpt_help: Quelques phrases affichées sur la carte de l'article dans la liste. Sans meta description, c'est aussi ce que lisent les moteurs de recherche.
+        ai_generated: Contenu généré par IA
+        ai_generated_help: Affiche le label de l'Union européenne sur l'article. Obligatoire pour un texte généré par une IA et publié pour informer le public (AI Act, article 50).
         featured_image: Image à la une
         featured_image_help: 'JPEG, PNG, WEBP ou GIF, %max% Mo au plus. Enregistrée en %size% px : toute autre taille ouvre le recadrage.'
         remove_featured_image: Supprimer l'image à la une
+        category: Catégorie
+        no_category: Aucune catégorie
+        tags: Tags
+    terms:
+        categories: Catégories
+        tags: Tags
+        new_category: Nouvelle catégorie
+        new_tag: Nouveau tag
+        edit_category: Modifier la catégorie
+        edit_tag: Modifier le tag
+        empty: Rien pour l'instant.
+        name: Nom
+        posts: Articles
+        slug_help: Minuscules, chiffres et tirets. Laissé vide, il est tiré du nom.
+        description: Description
+        description_help: Affichée au-dessus des articles de la catégorie.
+        delete_confirm: 'Supprimer « %name% » ?'
+        flash:
+            created: 'Ajout enregistré : « %name% ».'
+            updated: 'Modification enregistrée : « %name% ».'
+            deleted: 'Suppression effectuée : « %name% ».'
+            category_in_use: '« %name% » classe encore %count% article(s) : changez leur catégorie avant de la supprimer.'
     preview:
         open: Aperçu
         banner_draft: 'Aperçu : cet article n''est pas publié. Vous voyez sa dernière version enregistrée.'
@@ -115,6 +153,10 @@ admin:
         deleted: Article supprimé.
         published: Article publié.
         unpublished: Article dépublié.
+        scheduled: Article programmé pour le %date%.
+        schedule_invalid: '« %value% » n''est pas une date de publication.'
+        schedule_past: La date de publication programmée doit être à venir. Pour publier tout de suite, utilisez « Publier ».
+        schedule_published: Cet article a déjà été publié et garde sa date de première publication. Il ne peut pas être programmé.
         file_missing: Choisissez un fichier à joindre.
         file_added: « %name% » est joint à l'article.
         file_refused: '« %name% » n''a pas pu être joint : %reason%'

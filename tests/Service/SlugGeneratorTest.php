@@ -58,6 +58,6 @@ final class SlugGeneratorTest extends DatabaseTestCase
 
     private function generator(): SlugGenerator
     {
-        return new SlugGenerator(new BlogPostRepository($this->entityManager, BlogPost::class));
+        return new SlugGenerator(new BlogPostRepository($this->entityManager, BlogPost::class, $this->clock));
     }
 }

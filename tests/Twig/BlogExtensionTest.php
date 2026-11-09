@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace MulerTech\BlogBundle\Tests\Twig;
 
 use MulerTech\BlogBundle\Tests\DatabaseTestCase;
+use MulerTech\BlogBundle\Tests\Fixtures\Entity\BlogPost;
 use MulerTech\BlogBundle\Tests\Fixtures\Entity\File;
 use MulerTech\BlogBundle\Service\PostUrlGenerator;
 use MulerTech\BlogBundle\Twig\BlogExtension;
@@ -15,6 +16,8 @@ use Symfony\Component\Routing\Loader\YamlFileLoader;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Routing\RequestContext;
+use Symfony\Component\Routing\RouteCollection;
+use Symfony\Component\Clock\MockClock;
 use Twig\TwigFunction;
 
 final class BlogExtensionTest extends DatabaseTestCase
@@ -73,7 +76,7 @@ final class BlogExtensionTest extends DatabaseTestCase
     public function testTheTemplatesReachTheFilterAndFunctionsByName(): void
     {
         self::assertSame('mulertech_blog_content', $this->extension()->getFilters()[0]->getName());
-        self::assertSame(['mulertech_blog_post_url', 'mulertech_blog_file_url', 'mulertech_blog_csp_nonce'], array_map(
+        self::assertSame(['mulertech_blog_post_url', 'mulertech_blog_feed_url', 'mulertech_blog_file_url', 'mulertech_blog_csp_nonce'], array_map(
             static fn (TwigFunction $function): string => $function->getName(),
             $this->extension()->getFunctions(),
         ));
@@ -83,6 +86,17 @@ final class BlogExtensionTest extends DatabaseTestCase
      * With csp-bundle, the structured data script carries the nonce the site's policy
      * expects; without it, none.
      */
+    public function testAnArticleIsScheduledUntilItsDate(): void
+    {
+        $extension = new BlogExtension(new UrlGenerator(new RouteCollection(), new RequestContext()), new PostUrlGenerator(new UrlGenerator(new RouteCollection(), new RequestContext()), ['fr']), new RequestStack(), clock: new MockClock('2026-07-01 12:00'));
+        $post = new BlogPost();
+
+        self::assertFalse($extension->isScheduled($post));
+        self::assertTrue($extension->isScheduled($post->publish(new \DateTimeImmutable('2026-07-14 08:30'))));
+        self::assertFalse($extension->isScheduled($post->publish(new \DateTimeImmutable('2026-07-01 12:00'))));
+        self::assertSame(['mulertech_blog_scheduled'], array_map(static fn ($test): string => $test->getName(), $extension->getTests()));
+    }
+
     public function testTheNonceComesFromCspBundleWhenTheSiteHasIt(): void
     {
         $generator = new CspNonceGenerator();

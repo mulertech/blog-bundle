@@ -6,11 +6,17 @@ namespace MulerTech\BlogBundle;
 
 use MulerTech\BlogBundle\Controller\BlogAdminController;
 use MulerTech\BlogBundle\Controller\BlogController;
+use MulerTech\BlogBundle\Controller\BlogFeedController;
 use MulerTech\BlogBundle\Controller\BlogFileController;
+use MulerTech\BlogBundle\Controller\BlogTermAdminController;
 use MulerTech\BlogBundle\Doctrine\BlogPostMetadataListener;
+use MulerTech\BlogBundle\Entity\AbstractBlogCategory;
 use MulerTech\BlogBundle\Entity\AbstractBlogPost;
+use MulerTech\BlogBundle\Entity\AbstractBlogTag;
 use MulerTech\BlogBundle\Form\BlogPostType;
+use MulerTech\BlogBundle\Form\BlogTermType;
 use MulerTech\BlogBundle\Repository\BlogPostRepository;
+use MulerTech\BlogBundle\Repository\BlogTermRepository;
 use MulerTech\BlogBundle\Seo\BlogPostLlmsSectionProvider;
 use MulerTech\BlogBundle\Seo\BlogPostSitemapProvider;
 use MulerTech\BlogBundle\Seo\BlogPostSocialCardProvider;
@@ -49,6 +55,22 @@ final class MulerTechBlogBundle extends AbstractBundle
                         ->thenInvalid('mulertech_blog.post_class must name the site\'s entity extending '.AbstractBlogPost::class.', got %s.')
                     ->end()
                 ->end()
+                ->scalarNode('category_class')
+                    ->defaultNull()
+                    ->info('The site\'s category entity, extending '.AbstractBlogCategory::class.'. Without it, the blog has no categories')
+                    ->validate()
+                        ->ifTrue(static fn (mixed $class): bool => !\is_string($class) || !is_subclass_of($class, AbstractBlogCategory::class))
+                        ->thenInvalid('mulertech_blog.category_class must name the site\'s entity extending '.AbstractBlogCategory::class.', got %s.')
+                    ->end()
+                ->end()
+                ->scalarNode('tag_class')
+                    ->defaultNull()
+                    ->info('The site\'s tag entity, extending '.AbstractBlogTag::class.'. Without it, the blog has no tags')
+                    ->validate()
+                        ->ifTrue(static fn (mixed $class): bool => !\is_string($class) || !is_subclass_of($class, AbstractBlogTag::class))
+                        ->thenInvalid('mulertech_blog.tag_class must name the site\'s entity extending '.AbstractBlogTag::class.', got %s.')
+                    ->end()
+                ->end()
                 ->scalarNode('public_layout')
                     ->defaultValue('base.html.twig')
                     ->cannotBeEmpty()
@@ -70,6 +92,22 @@ final class MulerTechBlogBundle extends AbstractBundle
                     ->validate()
                         ->ifTrue(static fn (mixed $class): bool => !\is_string($class) || !is_a($class, FormTypeInterface::class, true))
                         ->thenInvalid('mulertech_blog.post_form_type must name a form type, got %s.')
+                    ->end()
+                ->end()
+                ->scalarNode('category_form_type')
+                    ->defaultValue(BlogTermType::class)
+                    ->info('Form of the categories in the admin. A site adding fields gives a type whose getParent() returns '.BlogTermType::class)
+                    ->validate()
+                        ->ifTrue(static fn (mixed $class): bool => !\is_string($class) || !is_a($class, FormTypeInterface::class, true))
+                        ->thenInvalid('mulertech_blog.category_form_type must name a form type, got %s.')
+                    ->end()
+                ->end()
+                ->scalarNode('tag_form_type')
+                    ->defaultValue(BlogTermType::class)
+                    ->info('Form of the tags in the admin. A site adding fields gives a type whose getParent() returns '.BlogTermType::class)
+                    ->validate()
+                        ->ifTrue(static fn (mixed $class): bool => !\is_string($class) || !is_a($class, FormTypeInterface::class, true))
+                        ->thenInvalid('mulertech_blog.tag_form_type must name a form type, got %s.')
                     ->end()
                 ->end()
                 ->arrayNode('locales')
@@ -109,12 +147,48 @@ final class MulerTechBlogBundle extends AbstractBundle
         $services = $container->services();
 
         $services->set('mulertech_blog.doctrine.blog_post_metadata_listener', BlogPostMetadataListener::class)
+            ->args([
+                '$categoryClass' => $config['category_class'],
+                '$tagClass' => $config['tag_class'],
+            ])
             ->tag('doctrine.event_listener', ['event' => 'loadClassMetadata']);
+
+        foreach (['category' => 'category_class', 'tag' => 'tag_class'] as $kind => $key) {
+            $formType = $config[$kind.'_form_type'];
+
+            $services->set('mulertech_blog.'.$kind.'_repository', BlogTermRepository::class)
+                ->args([
+                    '$entityManager' => new Reference('doctrine.orm.entity_manager'),
+                    '$termClass' => $config[$key],
+                    '$configKey' => 'mulertech_blog.'.$key,
+                ]);
+
+            $services->set('mulertech_blog.controller.admin_'.$kind, BlogTermAdminController::class)
+                ->args([
+                    '$terms' => new Reference('mulertech_blog.'.$kind.'_repository'),
+                    '$posts' => new Reference('mulertech_blog.repository'),
+                    '$kind' => $kind,
+                    '$formType' => $formType,
+                    '$entityManager' => new Reference('doctrine.orm.entity_manager'),
+                    '$formFactory' => new Reference('form.factory'),
+                    '$twig' => new Reference('twig'),
+                    '$urlGenerator' => new Reference('router'),
+                    '$authorizationChecker' => new Reference('security.authorization_checker'),
+                    '$csrfTokenManager' => new Reference('security.csrf.token_manager'),
+                    '$translator' => new Reference('translator'),
+                    '$locales' => $config['locales'],
+                    '$adminLayout' => $config['admin_layout'],
+                    '$adminRole' => $config['admin_role'],
+                ])
+                ->tag('controller.service_arguments')
+                ->public();
+        }
 
         $services->set('mulertech_blog.repository', BlogPostRepository::class)
             ->args([
                 '$entityManager' => new Reference('doctrine.orm.entity_manager'),
                 '$postClass' => $config['post_class'],
+                '$clock' => new Reference('clock'),
             ]);
         $services->alias(BlogPostRepository::class, 'mulertech_blog.repository');
 
@@ -139,6 +213,8 @@ final class MulerTechBlogBundle extends AbstractBundle
         $services->set('mulertech_blog.controller.blog', BlogController::class)
             ->args([
                 '$repository' => new Reference('mulertech_blog.repository'),
+                '$categories' => new Reference('mulertech_blog.category_repository'),
+                '$tags' => new Reference('mulertech_blog.tag_repository'),
                 '$viewCounter' => new Reference('mulertech_blog.view_counter'),
                 '$twig' => new Reference('twig'),
                 '$metaTagService' => new Reference(MetaTagService::class),
@@ -175,6 +251,7 @@ final class MulerTechBlogBundle extends AbstractBundle
                 '$postUrls' => new Reference('mulertech_blog.post_url_generator'),
                 '$requestStack' => new Reference('request_stack'),
                 '$nonceGenerator' => new Reference(CspNonceGenerator::class, ContainerInterface::IGNORE_ON_INVALID_REFERENCE),
+                '$clock' => new Reference('clock'),
             ])
             ->tag('twig.extension');
 
@@ -182,6 +259,7 @@ final class MulerTechBlogBundle extends AbstractBundle
             ->args([
                 '$repository' => new Reference('mulertech_blog.repository'),
                 '$fileManager' => new Reference(FileManagerInterface::class),
+                '$clock' => new Reference('clock'),
             ])
             ->tag('mulertech_seo.social_card_source_provider');
 
@@ -203,6 +281,8 @@ final class MulerTechBlogBundle extends AbstractBundle
         $services->set('mulertech_blog.controller.admin', BlogAdminController::class)
             ->args([
                 '$repository' => new Reference('mulertech_blog.repository'),
+                '$categories' => new Reference('mulertech_blog.category_repository'),
+                '$tags' => new Reference('mulertech_blog.tag_repository'),
                 '$entityManager' => new Reference('doctrine.orm.entity_manager'),
                 '$mediaManager' => new Reference('mulertech_blog.media_manager'),
                 '$publisher' => new Reference('mulertech_blog.publisher'),
@@ -219,6 +299,16 @@ final class MulerTechBlogBundle extends AbstractBundle
                 '$locales' => $config['locales'],
                 '$adminLayout' => $config['admin_layout'],
                 '$adminRole' => $config['admin_role'],
+            ])
+            ->tag('controller.service_arguments')
+            ->public();
+
+        $services->set('mulertech_blog.controller.feed', BlogFeedController::class)
+            ->args([
+                '$repository' => new Reference('mulertech_blog.repository'),
+                '$urls' => new Reference('mulertech_blog.post_url_generator'),
+                '$twig' => new Reference('twig'),
+                '$clock' => new Reference('clock'),
             ])
             ->tag('controller.service_arguments')
             ->public();

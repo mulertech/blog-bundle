@@ -7,6 +7,9 @@
         {% endif %}
     </a>
     <div class="p-6">
+        {% if post.category %}
+            <a href="{{ path('mulertech_blog_index', {category: post.category.slug}) }}" class="mb-3 inline-block rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200">{{ post.category.name }}</a>
+        {% endif %}
         <h2 class="mb-3 text-xl font-bold text-gray-900">
             <a href="{{ path('mulertech_blog_show', {slug: post.slug}) }}" class="hover:text-gray-600">{{ post.title }}</a>
         </h2>
@@ -15,6 +18,9 @@
             <span class="inline-flex items-center gap-1">{{ icons.icon('clock', 'h-4 w-4') }}{{ 'blog.card.reading_time'|trans({'%minutes%': post.readingTime}, 'MulerTechBlogBundle') }}</span>
             <span class="inline-flex items-center gap-1">{{ icons.icon('eye', 'h-4 w-4') }}{{ 'blog.card.views'|trans({'%count%': post.viewCount}, 'MulerTechBlogBundle') }}</span>
         </div>
+        {% if post.excerpt %}
+            <p class="mb-4 line-clamp-3 text-gray-600">{{ post.excerpt }}</p>
+        {% endif %}
         <a href="{{ path('mulertech_blog_show', {slug: post.slug}) }}" class="inline-flex items-center gap-1 text-sm font-semibold text-gray-900 hover:text-gray-600">
             {{ 'blog.card.read_more'|trans({}, 'MulerTechBlogBundle') }}<span class="sr-only"> : {{ post.title }}</span>{{ icons.icon('arrow_right', 'h-4 w-4') }}
         </a>

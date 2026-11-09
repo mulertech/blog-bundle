@@ -25,6 +25,16 @@ final readonly class BlogPostPublisher
         $this->entityManager->flush();
     }
 
+    /**
+     * @throws \InvalidArgumentException when `$at` is not in the future
+     * @throws \LogicException           when the article was published before
+     */
+    public function schedule(AbstractBlogPost $post, \DateTimeImmutable $at): void
+    {
+        $post->schedule($at, $this->clock->now());
+        $this->entityManager->flush();
+    }
+
     public function unpublish(AbstractBlogPost $post): void
     {
         $post->unpublish();

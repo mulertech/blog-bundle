@@ -1,6 +1,8 @@
 <div class="mb-6 flex flex-wrap items-center gap-3 rounded-xl bg-white p-4 shadow">
     <span class="mr-auto text-gray-700">
-        {% if post.published %}
+        {% if post is mulertech_blog_scheduled %}
+            {{ 'admin.scheduled_on'|trans({'%date%': post.publishedAt|date('admin.datetime_format'|trans({}, 'MulerTechBlogBundle'))}, 'MulerTechBlogBundle') }}
+        {% elseif post.published %}
             {{ 'admin.published_on'|trans({'%date%': post.publishedAt|date('blog.date_format'|trans({}, 'MulerTechBlogBundle'))}, 'MulerTechBlogBundle') }}
         {% else %}
             {{ 'admin.draft'|trans({}, 'MulerTechBlogBundle') }}
@@ -13,10 +15,23 @@
             <input type="hidden" name="_token" value="{{ csrf_token('mulertech_blog_publish_' ~ post.id) }}">
             <button type="submit" class="rounded-lg bg-gray-100 px-4 py-2 font-semibold text-gray-900 hover:bg-gray-200">{{ 'admin.unpublish'|trans({}, 'MulerTechBlogBundle') }}</button>
         </form>
-    {% else %}
+    {% endif %}
+    {% if not post.published or post is mulertech_blog_scheduled %}
         <form method="post" action="{{ path('mulertech_blog_admin_publish', {id: post.id}) }}">
             <input type="hidden" name="_token" value="{{ csrf_token('mulertech_blog_publish_' ~ post.id) }}">
-            <button type="submit" class="rounded-lg bg-gray-900 px-4 py-2 font-semibold text-white hover:bg-gray-700">{{ 'admin.publish'|trans({}, 'MulerTechBlogBundle') }}</button>
+            <button type="submit" class="rounded-lg bg-gray-900 px-4 py-2 font-semibold text-white hover:bg-gray-700">{{ (post.published ? 'admin.publish_now' : 'admin.publish')|trans({}, 'MulerTechBlogBundle') }}</button>
+        </form>
+    {% endif %}
+    {# An article published before keeps its date: only a draft never shown, or one still
+       waiting for its date, can be scheduled. #}
+    {% if post.publishedAt is null or post is mulertech_blog_scheduled %}
+        <form method="post" action="{{ path('mulertech_blog_admin_schedule', {id: post.id}) }}" class="flex items-center gap-2">
+            <input type="hidden" name="_token" value="{{ csrf_token('mulertech_blog_publish_' ~ post.id) }}">
+            <label for="mulertech-blog-schedule" class="text-sm text-gray-700">{{ 'admin.schedule_label'|trans({}, 'MulerTechBlogBundle') }}</label>
+            <input type="datetime-local" id="mulertech-blog-schedule" name="published_at" required
+                   value="{{ post is mulertech_blog_scheduled ? post.publishedAt|date('Y-m-d\\TH:i') : '' }}"
+                   class="rounded-lg border border-gray-300 px-3 py-2 text-sm">
+            <button type="submit" class="rounded-lg bg-gray-100 px-4 py-2 font-semibold text-gray-900 hover:bg-gray-200">{{ 'admin.schedule'|trans({}, 'MulerTechBlogBundle') }}</button>
         </form>
     {% endif %}
     <form method="post" action="{{ path('mulertech_blog_admin_delete', {id: post.id}) }}" data-mulertech-blog-confirm="{{ 'admin.delete_confirm'|trans({'%title%': post.title}, 'MulerTechBlogBundle') }}">

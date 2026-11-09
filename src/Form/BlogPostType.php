@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace MulerTech\BlogBundle\Form;
 
+use Doctrine\Common\Collections\Collection;
+use MulerTech\BlogBundle\Entity\AbstractBlogCategory;
 use MulerTech\BlogBundle\Entity\AbstractBlogPost;
+use MulerTech\BlogBundle\Entity\AbstractBlogTag;
+use MulerTech\BlogBundle\Entity\AbstractBlogTerm;
 use MulerTech\BlogBundle\Validator\CoverDimensions;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\CallbackTransformer;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\FileType;
@@ -60,11 +65,22 @@ class BlogPostType extends AbstractType
                 'label' => 'admin.form.content',
                 'constraints' => [new Assert\NotBlank(message: 'mulertech_blog.content.blank')],
             ])
+            ->add('excerpt', TextareaType::class, [
+                'label' => 'admin.form.excerpt',
+                'help' => 'admin.form.excerpt_help',
+                'required' => false,
+                'attr' => ['rows' => 3],
+            ])
             ->add('metaDescription', TextType::class, [
                 'label' => 'admin.form.meta_description',
                 'help' => 'admin.form.meta_description_help',
                 'required' => false,
                 'constraints' => [new Assert\Length(max: 255)],
+            ])
+            ->add('aiGenerated', CheckboxType::class, [
+                'label' => 'admin.form.ai_generated',
+                'help' => 'admin.form.ai_generated_help',
+                'required' => false,
             ])
             ->add('featuredImage', FileType::class, [
                 'label' => 'admin.form.featured_image',
@@ -80,6 +96,42 @@ class BlogPostType extends AbstractType
                     new CoverDimensions(),
                 ])],
             ]);
+
+        // A term is shown with its language when the site has several: two versions of a
+        // category share a name more often than not.
+        $label = static fn (AbstractBlogTerm $term): string => \count($locales) > 1 ? sprintf('%s (%s)', $term->getName(), $term->getLocale()) : $term->getName();
+        $value = static fn (?AbstractBlogTerm $term): ?int => $term?->getId();
+
+        if (null !== $options['categories']) {
+            $builder->add('category', ChoiceType::class, [
+                'label' => 'admin.form.category',
+                'required' => false,
+                'placeholder' => 'admin.form.no_category',
+                'choices' => $options['categories'],
+                'choice_value' => $value,
+                'choice_label' => $label,
+                'choice_translation_domain' => false,
+            ]);
+        }
+
+        if (null !== $options['tags']) {
+            $builder->add('tags', ChoiceType::class, [
+                'label' => 'admin.form.tags',
+                'required' => false,
+                'multiple' => true,
+                'expanded' => true,
+                // Through addTag() and removeTag(), so Doctrine sees the collection change.
+                'by_reference' => false,
+                'choices' => $options['tags'],
+                'choice_value' => $value,
+                'choice_label' => $label,
+                'choice_translation_domain' => false,
+            ]);
+            $builder->get('tags')->addModelTransformer(new CallbackTransformer(
+                static fn (?Collection $tags): array => null === $tags ? [] : $tags->toArray(),
+                static fn (?array $tags): array => $tags ?? [],
+            ));
+        }
 
         if ($post instanceof AbstractBlogPost && null !== $post->getFeaturedImage()) {
             $builder->add('removeFeaturedImage', CheckboxType::class, [
@@ -98,6 +150,10 @@ class BlogPostType extends AbstractType
                 'translation_domain' => 'MulerTechBlogBundle',
             ])
             ->setRequired('locales')
-            ->setAllowedTypes('locales', 'string[]');
+            ->setAllowedTypes('locales', 'string[]')
+            // The terms to choose from, null on a site without categories or tags.
+            ->setDefaults(['categories' => null, 'tags' => null])
+            ->setAllowedTypes('categories', ['null', AbstractBlogCategory::class.'[]'])
+            ->setAllowedTypes('tags', ['null', AbstractBlogTag::class.'[]']);
     }
 }

@@ -18,7 +18,7 @@ final class ExtendedBlogPostType extends AbstractType
 {
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
-        $builder->add('excerpt', TextareaType::class, ['required' => false]);
+        $builder->add('subtitle', TextareaType::class, ['required' => false]);
     }
 
     public function getParent(): string

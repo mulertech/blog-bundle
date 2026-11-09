@@ -7,6 +7,7 @@ namespace MulerTech\BlogBundle\Controller;
 use Doctrine\ORM\EntityManagerInterface;
 use MulerTech\BlogBundle\Entity\AbstractBlogPost;
 use MulerTech\BlogBundle\Repository\BlogPostRepository;
+use MulerTech\BlogBundle\Repository\BlogTermRepository;
 use MulerTech\BlogBundle\Service\BlogMediaManager;
 use MulerTech\BlogBundle\Service\BlogPostPublisher;
 use MulerTech\BlogBundle\Service\SlugGenerator;
@@ -47,6 +48,8 @@ final readonly class BlogAdminController
      */
     public function __construct(
         private BlogPostRepository $repository,
+        private BlogTermRepository $categories,
+        private BlogTermRepository $tags,
         private EntityManagerInterface $entityManager,
         private BlogMediaManager $mediaManager,
         private BlogPostPublisher $publisher,
@@ -96,7 +99,7 @@ final readonly class BlogAdminController
 
         $form = $this->form($post, $request);
 
-        if ($form->isSubmitted() && $form->isValid() && $this->assignSlug($form, $post)) {
+        if ($form->isSubmitted() && $form->isValid() && $this->assignSlug($form, $post) && $this->termsMatchLanguage($form, $post)) {
             $this->entityManager->persist($post);
             $this->entityManager->flush();
             $this->saveCover($form, $post);
@@ -114,7 +117,7 @@ final readonly class BlogAdminController
         $post = $this->post($id);
         $form = $this->form($post, $request);
 
-        if ($form->isSubmitted() && $form->isValid() && $this->assignSlug($form, $post)) {
+        if ($form->isSubmitted() && $form->isValid() && $this->assignSlug($form, $post) && $this->termsMatchLanguage($form, $post)) {
             $this->entityManager->flush();
 
             if ($form->has('removeFeaturedImage') && true === $form->get('removeFeaturedImage')->getData()) {
@@ -150,6 +153,35 @@ final readonly class BlogAdminController
 
         $this->publisher->publish($post);
         $this->flash($request, 'success', 'admin.flash.published');
+
+        return $this->redirectToEdit($post);
+    }
+
+    /**
+     * The date comes from a `datetime-local` field, in the server's time zone.
+     */
+    public function schedule(Request $request, int $id): Response
+    {
+        $this->denyUnlessAdmin();
+        $post = $this->post($id);
+        $this->denyUnlessValidToken($request, 'mulertech_blog_publish_'.$id);
+        $value = $request->request->getString('published_at');
+        $at = \DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $value);
+
+        if (false === $at) {
+            $this->flash($request, 'error', 'admin.flash.schedule_invalid', ['%value%' => $value]);
+
+            return $this->redirectToEdit($post);
+        }
+
+        try {
+            $this->publisher->schedule($post, $at);
+            $this->flash($request, 'success', 'admin.flash.scheduled', ['%date%' => $at->format('d/m/Y H:i')]);
+        } catch (\InvalidArgumentException) {
+            $this->flash($request, 'error', 'admin.flash.schedule_past');
+        } catch (\LogicException) {
+            $this->flash($request, 'error', 'admin.flash.schedule_published');
+        }
 
         return $this->redirectToEdit($post);
     }
@@ -226,7 +258,11 @@ final readonly class BlogAdminController
     private function form(AbstractBlogPost $post, Request $request): FormInterface
     {
         /** @var FormInterface<AbstractBlogPost> $form */
-        $form = $this->formFactory->create($this->postFormType, $post, ['locales' => $this->locales]);
+        $form = $this->formFactory->create($this->postFormType, $post, [
+            'locales' => $this->locales,
+            'categories' => $this->categories->isEnabled() ? $this->categories->findAll() : null,
+            'tags' => $this->tags->isEnabled() ? $this->tags->findAll() : null,
+        ]);
         $form->handleRequest($request);
 
         return $form;
@@ -255,6 +291,28 @@ final readonly class BlogAdminController
         }
 
         return true;
+    }
+
+    /**
+     * An article is filed under terms of its own language: a French article under an
+     * English category would show it on the English list.
+     *
+     * @param FormInterface<AbstractBlogPost> $form
+     */
+    private function termsMatchLanguage(FormInterface $form, AbstractBlogPost $post): bool
+    {
+        $matches = true;
+
+        foreach (['category' => $post->getCategory() ? [$post->getCategory()] : [], 'tags' => $post->getTags()->toArray()] as $field => $terms) {
+            foreach ($terms as $term) {
+                if ($form->has($field) && $term->getLocale() !== $post->getLocale()) {
+                    $form->get($field)->addError(new FormError($this->translator->trans('mulertech_blog.term.locale', ['%name%' => $term->getName(), '%term_locale%' => $term->getLocale(), '%locale%' => $post->getLocale()], 'validators')));
+                    $matches = false;
+                }
+            }
+        }
+
+        return $matches;
     }
 
     /**
@@ -319,6 +377,8 @@ final readonly class BlogAdminController
         return new Response($this->twig->render('@MulerTechBlog/admin/'.$template.'.html.twig', [
             'layout' => $this->adminLayout,
             'locales' => $this->locales,
+            'categories_enabled' => $this->categories->isEnabled(),
+            'tags_enabled' => $this->tags->isEnabled(),
             ...$parameters,
         ]), $status);
     }

@@ -44,6 +44,15 @@ final readonly class PostUrlGenerator
         );
     }
 
+    public function feed(string $locale, bool $absolute = false): string
+    {
+        return $this->urlGenerator->generate(
+            'mulertech_blog_feed',
+            $this->locale($locale),
+            $absolute ? UrlGeneratorInterface::ABSOLUTE_URL : UrlGeneratorInterface::ABSOLUTE_PATH,
+        );
+    }
+
     /**
      * @return list<string>
      */

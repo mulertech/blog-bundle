@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace MulerTech\BlogBundle\Controller;
 
+use MulerTech\BlogBundle\Entity\AbstractBlogCategory;
 use MulerTech\BlogBundle\Entity\AbstractBlogPost;
+use MulerTech\BlogBundle\Entity\AbstractBlogTag;
+use MulerTech\BlogBundle\Entity\AbstractBlogTerm;
 use MulerTech\BlogBundle\Repository\BlogPostRepository;
+use MulerTech\BlogBundle\Repository\BlogTermRepository;
 use MulerTech\BlogBundle\Seo\BlogPostSocialCardProvider;
 use MulerTech\BlogBundle\Service\PostUrlGenerator;
 use MulerTech\BlogBundle\Service\ViewCounter;
@@ -29,6 +33,8 @@ final readonly class BlogController
 {
     public function __construct(
         private BlogPostRepository $repository,
+        private BlogTermRepository $categories,
+        private BlogTermRepository $tags,
         private ViewCounter $viewCounter,
         private Environment $twig,
         private MetaTagService $metaTagService,
@@ -54,7 +60,11 @@ final readonly class BlogController
             throw new NotFoundHttpException(sprintf('"%s" is not a page number.', $number));
         }
 
-        $page = $this->repository->paginatePublished($locale, max(1, (int) $number), '' === $search ? null : $search);
+        $category = $this->filter($request, 'category', $this->categories, $locale);
+        $tag = $this->filter($request, 'tag', $this->tags, $locale);
+        \assert(null === $category || $category instanceof AbstractBlogCategory);
+        \assert(null === $tag || $tag instanceof AbstractBlogTag);
+        $page = $this->repository->paginatePublished($locale, max(1, (int) $number), '' === $search ? null : $search, category: $category, tag: $tag);
 
         if (!$page->exists()) {
             throw new NotFoundHttpException(sprintf('The blog has %d pages, not %d.', $page->pageCount, $page->number));
@@ -62,8 +72,12 @@ final readonly class BlogController
 
         return new Response($this->twig->render('@MulerTechBlog/blog/index.html.twig', [
             'layout' => $this->publicLayout,
+            'locale' => $locale,
             'page' => $page,
             'search' => $search,
+            'category' => $category,
+            'tag' => $tag,
+            'categories' => $this->repository->findCategoriesInUse($locale),
             'recent_posts' => $this->repository->findRecent($locale),
             'popular_posts' => $this->repository->findPopular($locale),
             'seo' => $this->metaTagService->generateMetaTags([
@@ -71,7 +85,7 @@ final readonly class BlogController
                 'description' => $this->translator->trans('blog.meta.description', [], 'MulerTechBlogBundle'),
                 // A search result is not a page of its own: it points search engines at
                 // the list rather than letting every query be indexed.
-                ...('' === $search ? [] : ['url' => $this->urls->index($locale, true)]),
+                ...('' === $search && null === $category && null === $tag ? [] : ['url' => $this->urls->index($locale, true)]),
             ]),
         ]));
     }
@@ -126,6 +140,26 @@ final readonly class BlogController
     }
 
     /**
+     * The term a list is filtered by, in the request's language. One unknown there, or on a
+     * site without such terms, answers 404 rather than the whole list under its address.
+     */
+    private function filter(Request $request, string $parameter, BlogTermRepository $terms, string $locale): ?AbstractBlogTerm
+    {
+        $slug = $request->query->getString($parameter);
+
+        if ('' === $slug) {
+            return null;
+        }
+
+        if (!$terms->isEnabled()) {
+            throw new NotFoundHttpException(sprintf('The blog has no %s to filter by.', $parameter));
+        }
+
+        return $terms->findBySlug($slug, $locale)
+            ?? throw new NotFoundHttpException(sprintf('No %s "%s" in "%s".', $parameter, $slug, $locale));
+    }
+
+    /**
      * @param array<string, string|int> $socialCard
      *
      * @return array<string, mixed>
@@ -134,7 +168,7 @@ final readonly class BlogController
     {
         return $this->metaTagService->generateMetaTags([
             'title' => $post->getTitle(),
-            'description' => $post->getMetaDescription(),
+            'description' => $post->getSeoExcerpt(),
             'type' => 'article',
             'publishedTime' => $post->getSeoPublishedAt(),
             'modifiedTime' => $post->getSeoUpdatedAt(),

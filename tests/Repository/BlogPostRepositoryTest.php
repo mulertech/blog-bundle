@@ -7,7 +7,9 @@ namespace MulerTech\BlogBundle\Tests\Repository;
 use MulerTech\BlogBundle\Entity\AbstractBlogPost;
 use MulerTech\BlogBundle\Repository\BlogPostRepository;
 use MulerTech\BlogBundle\Tests\DatabaseTestCase;
+use MulerTech\BlogBundle\Tests\Fixtures\Entity\BlogCategory;
 use MulerTech\BlogBundle\Tests\Fixtures\Entity\BlogPost;
+use MulerTech\BlogBundle\Tests\Fixtures\Entity\BlogTag;
 
 final class BlogPostRepositoryTest extends DatabaseTestCase
 {
@@ -20,6 +22,55 @@ final class BlogPostRepositoryTest extends DatabaseTestCase
         self::assertSame($published, $this->repository()->findPublishedBySlug('bienvenue', 'fr'));
         self::assertNull($this->repository()->findPublishedBySlug('brouillon', 'fr'));
         self::assertNull($this->repository()->findPublishedBySlug('inconnu', 'fr'));
+    }
+
+    public function testTheListIsFilteredByCategoryOrTag(): void
+    {
+        $hosting = $this->category('Hébergement');
+        $security = $this->tag('Sécurité');
+        $filed = $this->post('Classé', publishedAt: '2026-01-01')->setCategory($hosting)->addTag($security);
+        $this->post('Autre', publishedAt: '2026-02-01');
+        $this->entityManager->flush();
+        $this->entityManager->clear();
+
+        $byCategory = $this->repository()->paginatePublished('fr', 1, category: $this->entityManager->find(BlogCategory::class, $hosting->getId()));
+        $byTag = $this->repository()->paginatePublished('fr', 1, tag: $this->entityManager->find(BlogTag::class, $security->getId()));
+
+        self::assertSame(['Classé'], array_map(static fn (AbstractBlogPost $post): string => $post->getTitle(), $byCategory->items));
+        self::assertSame(['Classé'], array_map(static fn (AbstractBlogPost $post): string => $post->getTitle(), $byTag->items));
+        self::assertSame(1, $byTag->totalItems);
+        self::assertSame([$filed->getId()], array_map(static fn (AbstractBlogPost $post): ?int => $post->getId(), $byTag->items));
+    }
+
+    /**
+     * The sidebar counts what a visitor can read: published, reached, in the language.
+     */
+    public function testTheTermsInUseCountTheVisibleArticlesOfTheLanguage(): void
+    {
+        $hosting = $this->category('Hébergement');
+        $design = $this->category('Design');
+        $this->category('Vide');
+        $english = $this->category('Hosting', 'en');
+        $tag = $this->tag('Sécurité');
+        $this->post('Un')->setCategory($hosting)->addTag($tag);
+        $this->post('Deux')->setCategory($hosting);
+        $this->post('Trois')->setCategory($design);
+        $this->post('Brouillon', publishedAt: null)->setCategory($design)->addTag($tag);
+        $this->post('À venir', publishedAt: '2026-07-14')->setCategory($design);
+        $this->post('One', 'en')->setCategory($english);
+        $this->entityManager->flush();
+
+        self::assertSame(
+            [['Design', 1], ['Hébergement', 2]],
+            array_map(static fn (array $entry): array => [$entry['term']->getName(), $entry['count']], $this->repository()->findCategoriesInUse('fr')),
+        );
+        self::assertSame(
+            [['Sécurité', 1]],
+            array_map(static fn (array $entry): array => [$entry['term']->getName(), $entry['count']], $this->repository()->findTagsInUse('fr')),
+        );
+        self::assertSame([], $this->repository()->findTagsInUse('de'));
+        self::assertSame(3, $this->repository()->countFiledUnder($design));
+        self::assertSame(2, $this->repository()->countFiledUnder($tag));
     }
 
     public function testTheListHoldsThePublishedArticlesOfOneLanguageNewestFirst(): void
@@ -185,7 +236,7 @@ final class BlogPostRepositoryTest extends DatabaseTestCase
     public function testTheTranslationsAreThePublishedVersionsInOtherLanguages(): void
     {
         $french = $this->post('Bienvenue');
-        $english = new BlogPost()->setTitle('Welcome')->setSlug('welcome')->setContent('Text.')->setLocale('en')->setTranslationOf($french)->publish(new \DateTimeImmutable());
+        $english = new BlogPost()->setTitle('Welcome')->setSlug('welcome')->setContent('Text.')->setLocale('en')->setTranslationOf($french)->publish($this->clock->now());
         $german = new BlogPost()->setTitle('Willkommen')->setSlug('willkommen')->setContent('Text.')->setLocale('de')->setTranslationOf($french);
         $this->entityManager->persist($english);
         $this->entityManager->persist($german);
@@ -207,7 +258,7 @@ final class BlogPostRepositoryTest extends DatabaseTestCase
 
     private function repository(): BlogPostRepository
     {
-        return new BlogPostRepository($this->entityManager, BlogPost::class);
+        return new BlogPostRepository($this->entityManager, BlogPost::class, $this->clock);
     }
 
     /**

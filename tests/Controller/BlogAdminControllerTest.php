@@ -15,15 +15,10 @@ use MulerTech\BlogBundle\Tests\Fixtures\Entity\File;
 use MulerTech\BlogBundle\Tests\Fixtures\ExtendedBlogPostType;
 use MulerTech\BlogBundle\Tests\Fixtures\InMemoryFileManager;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Symfony\Bridge\Twig\Extension\AssetExtension;
 use Symfony\Bridge\Twig\Extension\CsrfExtension;
 use Symfony\Bridge\Twig\Extension\CsrfRuntime;
 use Symfony\Bridge\Twig\Extension\FormExtension;
 use Symfony\Bridge\Twig\Form\TwigRendererEngine;
-use Symfony\Component\Asset\Package;
-use Symfony\Component\Asset\Packages;
-use Symfony\Component\Asset\VersionStrategy\EmptyVersionStrategy;
-use Symfony\Component\Clock\MockClock;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\Form\Extension\HttpFoundation\HttpFoundationExtension;
 use Symfony\Component\Form\Extension\Validator\ValidatorExtension;
@@ -46,12 +41,10 @@ use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
 use Symfony\Component\Validator\Validation;
 use Twig\RuntimeLoader\FactoryRuntimeLoader;
 
-final class BlogAdminControllerTest extends PublicPageTestCase
+final class BlogAdminControllerTest extends AdminPageTestCase
 {
-    private const string TOKEN = 'valid-token';
-
+    private bool $termsEnabled = true;
     private InMemoryFileManager $fileManager;
-    private bool $granted = true;
 
     protected function setUp(): void
     {
@@ -60,18 +53,6 @@ final class BlogAdminControllerTest extends PublicPageTestCase
         $directory = sys_get_temp_dir().'/blog_admin_'.uniqid('', true);
         mkdir($directory, 0o775, true);
         $this->fileManager = new InMemoryFileManager($this->entityManager, $directory);
-
-        $csrf = $this->createStub(CsrfTokenManagerInterface::class);
-        $csrf->method('getToken')->willReturnCallback(static fn (string $id): CsrfToken => new CsrfToken($id, self::TOKEN));
-        $this->templates->addPath(\dirname(__DIR__, 2).'/vendor/symfony/twig-bridge/Resources/views/Form');
-        $engine = new TwigRendererEngine(['form_div_layout.html.twig'], $this->twig);
-        $this->twig->addExtension(new FormExtension());
-        $this->twig->addExtension(new CsrfExtension());
-        $this->twig->addExtension(new AssetExtension(new Packages(new Package(new EmptyVersionStrategy()))));
-        $this->twig->addRuntimeLoader(new FactoryRuntimeLoader([
-            FormRenderer::class => static fn (): FormRenderer => new FormRenderer($engine),
-            CsrfRuntime::class => static fn (): CsrfRuntime => new CsrfRuntime($csrf),
-        ]));
     }
 
     protected function tearDown(): void
@@ -288,11 +269,11 @@ final class BlogAdminControllerTest extends PublicPageTestCase
     {
         $page = $this->crawl($this->controller(formType: ExtendedBlogPostType::class)->new($this->request()));
         self::assertCount(1, $page->filter('[name="extended_blog_post[metaDescription]"]'));
-        self::assertCount(1, $page->filter('[name="extended_blog_post[excerpt]"]'));
+        self::assertCount(1, $page->filter('[name="extended_blog_post[subtitle]"]'));
 
-        $this->controller(formType: ExtendedBlogPostType::class)->new($this->submit(['title' => 'Avec extrait', 'content' => 'Texte.', 'excerpt' => 'Résumé.'], name: 'extended_blog_post'));
+        $this->controller(formType: ExtendedBlogPostType::class)->new($this->submit(['title' => 'Avec sous-titre', 'content' => 'Texte.', 'subtitle' => 'Sous-titre.'], name: 'extended_blog_post'));
 
-        self::assertSame('Résumé.', $this->onlyPost()->getExcerpt());
+        self::assertSame('Sous-titre.', $this->onlyPost()->getSubtitle());
     }
 
     public function testPublishingAndUnpublishingKeepTheFirstDate(): void
@@ -301,12 +282,147 @@ final class BlogAdminControllerTest extends PublicPageTestCase
 
         $response = $this->controller()->publish($this->post_(['_token' => self::TOKEN]), (int) $post->getId());
         self::assertTrue($post->isPublished());
-        self::assertEquals(new \DateTimeImmutable('2026-06-01 09:00'), $post->getPublishedAt());
+        self::assertEquals($this->clock->now(), $post->getPublishedAt());
         self::assertSame('/admin/blog/'.$post->getId(), $this->redirect($response));
 
         $this->controller()->unpublish($this->post_(['_token' => self::TOKEN]), (int) $post->getId());
         self::assertFalse($post->isPublished());
         self::assertSame(['Article publié.', 'Article dépublié.'], $this->flashes('success'));
+    }
+
+    public function testAnArticleIsFiledUnderACategoryAndTags(): void
+    {
+        $hosting = $this->category('Hébergement');
+        $security = $this->tag('Sécurité');
+        $speed = $this->tag('Performance');
+
+        $page = $this->crawl($this->controller()->new($this->request()));
+        self::assertSame(['', (string) $hosting->getId()], $page->filter('select[name="blog_post[category]"] option')->each(static fn (Crawler $option): string => (string) $option->attr('value')));
+        self::assertCount(2, $page->filter('input[name="blog_post[tags][]"]'));
+
+        $this->controller()->new($this->submit([
+            'title' => 'Classé',
+            'content' => 'Texte.',
+            'category' => (string) $hosting->getId(),
+            'tags' => [(string) $security->getId(), (string) $speed->getId()],
+        ]));
+        $this->entityManager->clear();
+
+        $post = $this->onlyPost();
+        self::assertSame('Hébergement', $post->getCategory()?->getName());
+        self::assertEqualsCanonicalizing(['Sécurité', 'Performance'], array_map(static fn ($tag): string => $tag->getName(), $post->getTags()->toArray()));
+
+        $this->controller()->edit($this->submit(['title' => 'Classé', 'content' => 'Texte.', 'category' => '', 'tags' => [(string) $security->getId()]]), (int) $post->getId());
+        $this->entityManager->clear();
+
+        $post = $this->onlyPost();
+        self::assertNull($post->getCategory());
+        self::assertSame(['Sécurité'], array_map(static fn ($tag): string => $tag->getName(), $post->getTags()->toArray()));
+    }
+
+    public function testATermOfAnotherLanguageIsRefused(): void
+    {
+        $hosting = $this->category('Hosting', 'en');
+        $tag = $this->tag('Security', 'en');
+
+        $response = $this->controller(locales: ['fr', 'en'])->new($this->submit([
+            'title' => 'Classé',
+            'content' => 'Texte.',
+            'locale' => 'fr',
+            'category' => (string) $hosting->getId(),
+            'tags' => [(string) $tag->getId()],
+        ]));
+
+        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
+        $text = $this->crawl($response)->text();
+        self::assertStringContainsString('« Hosting » est en en, l\'article en fr', $text);
+        self::assertStringContainsString('« Security » est en en, l\'article en fr', $text);
+        self::assertSame([], $this->entityManager->getRepository(BlogPost::class)->findAll());
+        self::assertStringContainsString('Hosting (en)', (string) $this->controller(locales: ['fr', 'en'])->new($this->request())->getContent());
+    }
+
+    public function testASiteWithoutTermsShowsNeitherField(): void
+    {
+        $this->termsEnabled = false;
+
+        $page = $this->crawl($this->controller()->new($this->request()));
+
+        self::assertCount(0, $page->filter('[name="blog_post[category]"]'));
+        self::assertCount(0, $page->filter('[name="blog_post[tags][]"]'));
+        self::assertCount(0, $this->crawl($this->controller()->index($this->request()))->filter('a[href="/admin/blog/categories"]'));
+    }
+
+    public function testTheListLeadsToTheCategoriesAndTags(): void
+    {
+        $page = $this->crawl($this->controller()->index($this->request()));
+
+        self::assertCount(1, $page->filter('a[href="/admin/blog/categories"]'));
+        self::assertCount(1, $page->filter('a[href="/admin/blog/tags"]'));
+    }
+
+    public function testADraftIsScheduledThenPublishedEarlier(): void
+    {
+        $post = $this->post('À venir', publishedAt: null);
+
+        $response = $this->controller()->schedule($this->post_(['_token' => self::TOKEN, 'published_at' => '2026-07-14T08:30']), (int) $post->getId());
+
+        self::assertSame('/admin/blog/'.$post->getId(), $this->redirect($response));
+        self::assertTrue($post->isScheduledAt($this->clock->now()));
+        self::assertEquals(new \DateTimeImmutable('2026-07-14 08:30'), $post->getPublishedAt());
+        self::assertSame(['Article programmé pour le 14/07/2026 08:30.'], $this->flashes('success'));
+
+        $page = $this->crawl($this->controller()->edit($this->request(), (int) $post->getId()));
+        self::assertStringContainsString('Programmé pour le 14/07/2026 à 08:30', $page->text());
+        self::assertSame('2026-07-14T08:30', $page->filter('input[name="published_at"]')->attr('value'));
+        self::assertStringContainsString('Publier maintenant', $page->text());
+
+        $this->controller()->publish($this->post_(['_token' => self::TOKEN]), (int) $post->getId());
+        self::assertTrue($post->isVisibleAt($this->clock->now()));
+        self::assertEquals($this->clock->now(), $post->getPublishedAt());
+    }
+
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function refusedSchedules(): iterable
+    {
+        yield 'not a date' => ['demain', '« demain » n\'est pas une date de publication.'];
+        yield 'in the past' => ['2026-06-30T12:00', 'La date de publication programmée doit être à venir. Pour publier tout de suite, utilisez « Publier ».'];
+    }
+
+    #[DataProvider('refusedSchedules')]
+    public function testAScheduleThatIsNotAFutureDateIsRefused(string $value, string $message): void
+    {
+        $post = $this->post('Brouillon', publishedAt: null);
+
+        $this->controller()->schedule($this->post_(['_token' => self::TOKEN, 'published_at' => $value]), (int) $post->getId());
+
+        self::assertFalse($post->isPublished());
+        self::assertSame([$message], $this->flashes('error'));
+    }
+
+    public function testAnArticlePublishedBeforeKeepsItsDate(): void
+    {
+        $post = $this->post('Publié', publishedAt: '2026-03-14 10:00');
+        $post->unpublish();
+        $this->entityManager->flush();
+
+        $page = $this->crawl($this->controller()->edit($this->request(), (int) $post->getId()));
+        self::assertCount(0, $page->filter('input[name="published_at"]'));
+
+        $this->controller()->schedule($this->post_(['_token' => self::TOKEN, 'published_at' => '2026-08-01T10:00']), (int) $post->getId());
+
+        self::assertEquals(new \DateTimeImmutable('2026-03-14 10:00'), $post->getPublishedAt());
+        self::assertSame(['Cet article a déjà été publié et garde sa date de première publication. Il ne peut pas être programmé.'], $this->flashes('error'));
+    }
+
+    public function testTheListShowsAScheduledArticle(): void
+    {
+        $this->post('À venir', publishedAt: '2026-07-14 08:30');
+
+        $page = $this->crawl($this->controller()->index($this->request()));
+
+        self::assertStringContainsString('Programmé pour le 14/07/2026 à 08:30', $page->filter('tbody tr')->text());
     }
 
     public function testDeletingAnArticleRemovesItAndItsFiles(): void
@@ -472,32 +588,20 @@ final class BlogAdminControllerTest extends PublicPageTestCase
      */
     private function controller(array $locales = ['fr'], string $formType = BlogPostType::class): BlogAdminController
     {
-        $validator = Validation::createValidatorBuilder()
-            ->setTranslator($this->translator)
-            ->setTranslationDomain('validators')
-            ->getValidator();
-        $formFactory = Forms::createFormFactoryBuilder()
-            ->addExtension(new HttpFoundationExtension())
-            ->addExtension(new ValidatorExtension($validator))
-            ->getFormFactory();
-
-        $authorizationChecker = $this->createStub(AuthorizationCheckerInterface::class);
-        $authorizationChecker->method('isGranted')->willReturn($this->granted);
-        $csrf = $this->createStub(CsrfTokenManagerInterface::class);
-        $csrf->method('isTokenValid')->willReturnCallback(static fn (CsrfToken $token): bool => self::TOKEN === $token->getValue());
-
         return new BlogAdminController(
             $this->repository(),
+            $this->categories($this->termsEnabled),
+            $this->tags($this->termsEnabled),
             $this->entityManager,
             $this->media(),
-            new BlogPostPublisher($this->entityManager, new MockClock('2026-06-01 09:00')),
+            new BlogPostPublisher($this->entityManager, $this->clock),
             new SlugGenerator($this->repository()),
             $this->fileManager,
-            $formFactory,
+            $this->formFactory(),
             $this->twig,
             $this->urlGenerator,
-            $authorizationChecker,
-            $csrf,
+            $this->authorizationChecker(),
+            $this->csrfTokenManager(),
             $this->translator,
             BlogPost::class,
             $formType,
@@ -516,7 +620,7 @@ final class BlogAdminControllerTest extends PublicPageTestCase
     }
 
     /**
-     * @param array<string, string>       $fields
+     * @param array<string, mixed>        $fields
      * @param array<string, UploadedFile> $files
      */
     private function submit(array $fields, array $files = [], string $name = 'blog_post'): Request
@@ -524,42 +628,10 @@ final class BlogAdminControllerTest extends PublicPageTestCase
         return $this->post_([$name => $fields], [$name => $files]);
     }
 
-    /**
-     * @param array<string, mixed> $fields
-     * @param array<string, mixed> $files
-     */
-    private function post_(array $fields, array $files = []): Request
-    {
-        $request = new Request(request: $fields, files: $files, server: ['REQUEST_METHOD' => 'POST']);
-        $request->setLocale('fr');
-        $request->setSession($this->session ??= new Session(new MockArraySessionStorage()));
-        $this->requestStack->push($request);
 
-        return $request;
-    }
 
-    private ?Session $session = null;
 
-    /**
-     * @return list<string>
-     */
-    private function flashes(string $type): array
-    {
-        /** @var list<string> */
-        return $this->session?->getFlashBag()->peek($type) ?? [];
-    }
 
-    private function crawl(Response $response): Crawler
-    {
-        return new Crawler((string) $response->getContent());
-    }
-
-    private function redirect(Response $response): string
-    {
-        self::assertInstanceOf(RedirectResponse::class, $response);
-
-        return $response->getTargetUrl();
-    }
 
     private function onlyPost(): BlogPost
     {

@@ -10,3 +10,7 @@ mulertech_blog:
         type: 'L''image à la une doit être au format JPEG, PNG, WEBP ou GIF.'
         wrong_size: 'L''image à la une doit mesurer exactement {{ expected }} px, celle-ci mesure {{ actual }} px.'
         unreadable: 'L''image envoyée ne peut pas être lue : l''image à la une doit être une image JPEG, PNG, WEBP ou GIF de {{ expected }} px.'
+    term:
+        locale: '« %name% » est en %term_locale%, l''article en %locale% : choisissez un terme de la langue de l''article.'
+        name_blank: Le nom est obligatoire.
+        slug_taken: 'Le slug « %slug% » est déjà pris dans cette langue.'

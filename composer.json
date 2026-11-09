@@ -1,6 +1,6 @@
 {
     "name": "mulertech/blog-bundle",
-    "description": "Symfony bundle for a Markdown blog: shared article model, admin, public pages, full-text search, social sharing and SEO, with one article per language",
+    "description": "Symfony bundle for a Markdown blog: shared article model, categories and tags, admin, public pages, search, scheduled publication, Atom feed, social sharing and SEO, with one article per language",
     "type": "symfony-bundle",
     "license": "MIT",
     "keywords": [
@@ -10,7 +10,6 @@
         "markdown",
         "doctrine",
         "postgresql",
-        "full-text-search",
         "seo",
         "multilingual"
     ],
@@ -28,7 +27,7 @@
         "doctrine/dbal": "^4.0",
         "doctrine/orm": "^3.0",
         "league/commonmark": "^2.0",
-        "mulertech/file-bundle": "^1.1",
+        "mulertech/file-bundle": "^1.2",
         "mulertech/seo-bundle": "^1.7",
         "symfony/asset": "^8.0",
         "symfony/asset-mapper": "^8.0",
