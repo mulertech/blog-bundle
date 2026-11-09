@@ -1,5 +1,13 @@
 # Release notes for blog-bundle
 
+## v1.3.1 - 2026-11-09
+
+A table wider than the screen scrolls in its own box instead of being cut off.
+
+- In `blog/show.html.twig`, the tables of an article's content scroll horizontally (`[&_table]:block [&_table]:overflow-x-auto` on the content container). On a phone held upright, a table of several columns was clipped at the right edge with no way to reach it, since sites commonly keep `overflow-x: hidden` on the page so that nothing makes it slide sideways
+- The text around the table stays in place; a table that fits keeps its look
+- A site replacing `blog/show.html.twig` adds the same two classes to its content container
+
 ## v1.3.0 - 2026-11-08
 
 An article is previewed in the site's own template before it is published.
