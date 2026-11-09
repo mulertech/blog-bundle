@@ -1,5 +1,28 @@
 # Release notes for blog-bundle
 
+## v1.5.0 - 2026-11-09
+
+The excerpt and the AI label can be turned off, for a blog whose articles are all written by hand.
+
+### Added
+
+- `excerpt` and `ai_label` settings, both `true` by default. Set to `false`, the column is not mapped, so `doctrine:migrations:diff` adds nothing for it, and the admin form does not show the field:
+  
+  ```yaml
+  mulertech_blog:
+      excerpt: false
+      ai_label: false
+  
+  ```
+- With a setting off, the property keeps its default value (`null` for the excerpt, `false` for the AI flag). The card shows no excerpt, and the article never carries the AI label.
+  
+- The `BlogPostType` form takes matching `excerpt` and `ai_label` options, so a site form extending it sees the same fields.
+  
+
+### Unchanged
+
+- A site that sets neither key keeps both columns and both fields, exactly as in 1.4.
+
 ## v1.4.0 - 2026-11-09
 
 Categories and tags, scheduled publication, an Atom feed, an excerpt and the AI label. The files of an article are stored under its id.
@@ -9,22 +32,30 @@ Requires `mulertech/file-bundle` 1.2: publish that release first.
 ### Files
 
 - The files of an article are stored under a name that starts with its id, on every site, whatever its directory strategy:
+  
   - `blog/images/image-12-<unique>.webp` for a cover
   - `blog/files/file-12-<name>-<unique>.pdf` for an attached file
   
 - `BlogMediaManager::setCover()` and `attach()` take the uploader as an optional last argument, for an API or an import without a session. If it is not given, the logged-in user is used. If there is neither, an exception says so.
+  
 
 ### Categories and tags
 
 - Both are optional. `category_class` and `tag_class` name the site's entities, which extend `AbstractBlogCategory` and `AbstractBlogTag` (name, slug, language, translation group, plus a description for a category). If they are not set, there is no column, no form field and no filter.
+  
 - The article gets two relations:
+  
   - `category`, stored in a nullable `category_id` column
   - `tags`, stored in a join table named `<entity>_<tag entity>` (`blog_post_blog_tag` for `BlogPost` and `BlogTag`)
   
 - The list can be filtered with `?category=<slug>` and `?tag=<slug>`. An unknown slug returns 404.
+  
 - The sidebar lists the categories that hold articles, with their article count. The card shows the category; the article page shows the category and the tags.
+  
 - The admin lists, creates, edits and deletes them, and shows how many articles each one holds. Deleting a category that still holds articles is refused. Deleting a tag removes it from its articles. An article can only use categories and tags in its own language.
+  
 - `category_form_type` and `tag_form_type` let a site add its own fields to these forms.
+  
 
 ### Publication
 
