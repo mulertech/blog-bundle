@@ -1,5 +1,54 @@
 # Release notes for blog-bundle
 
+## v1.4.0 - 2026-11-09
+
+Categories and tags, scheduled publication, an Atom feed, an excerpt and the AI label. The files of an article are stored under its id.
+
+Requires `mulertech/file-bundle` 1.2: publish that release first.
+
+### Files
+
+- The files of an article are stored under a name that starts with its id, on every site, whatever its directory strategy:
+  - `blog/images/image-12-<unique>.webp` for a cover
+  - `blog/files/file-12-<name>-<unique>.pdf` for an attached file
+  
+- `BlogMediaManager::setCover()` and `attach()` take the uploader as an optional last argument, for an API or an import without a session. If it is not given, the logged-in user is used. If there is neither, an exception says so.
+
+### Categories and tags
+
+- Both are optional. `category_class` and `tag_class` name the site's entities, which extend `AbstractBlogCategory` and `AbstractBlogTag` (name, slug, language, translation group, plus a description for a category). If they are not set, there is no column, no form field and no filter.
+- The article gets two relations:
+  - `category`, stored in a nullable `category_id` column
+  - `tags`, stored in a join table named `<entity>_<tag entity>` (`blog_post_blog_tag` for `BlogPost` and `BlogTag`)
+  
+- The list can be filtered with `?category=<slug>` and `?tag=<slug>`. An unknown slug returns 404.
+- The sidebar lists the categories that hold articles, with their article count. The card shows the category; the article page shows the category and the tags.
+- The admin lists, creates, edits and deletes them, and shows how many articles each one holds. Deleting a category that still holds articles is refused. Deleting a tag removes it from its articles. An article can only use categories and tags in its own language.
+- `category_form_type` and `tag_form_type` let a site add its own fields to these forms.
+
+### Publication
+
+- "Programmer" hides an article until a future date. From that date, it appears everywhere (list, page, files, sitemap, `llms.txt`, feed, sharing image) without any scheduled task. "Publier maintenant" publishes it right away. An article that was already published keeps its original date and cannot be scheduled.
+- New API: `AbstractBlogPost::schedule()`, `isVisibleAt()` and `isScheduledAt()`; `BlogPostPublisher::schedule()`; the Twig test `mulertech_blog_scheduled`.
+- `BlogPostRepository` takes the clock, so every public query returns only the articles visible at that moment.
+
+### Content
+
+- `excerpt` (column `excerpt`): shown on the card. It is also the description for search engines when the meta description is empty.
+- `aiGenerated` (column `ai_generated`, default `false`): shows the European Union's AI-generated label on the article (AI Act, article 50 §4). The admin form has a checkbox for it.
+
+### Feed
+
+- `/blog/feed.xml` (route `mulertech_blog_feed`): the 20 latest articles in the current language, in Atom format. The list and every article page link to it in their `<head>`.
+
+### Upgrading
+
+- Run `doctrine:migrations:diff`. It adds `excerpt` and `ai_generated`, plus the category and tag tables and relations if the site enables them.
+- If the site's entity declares `excerpt`, `aiGenerated`, `category` or `tags` itself, remove them, because the bundle now maps them.
+- If the site overrides `blog/_pagination.html.twig`, its links must keep the `category` and `tag` filters.
+- If the site overrides `blog/index.html.twig` or `blog/show.html.twig`, it must add the feed link to get it.
+- Files uploaded with earlier versions keep their path and stay readable. Moving them under `blog/` is optional.
+
 ## v1.3.1 - 2026-11-09
 
 A table wider than the screen scrolls in its own box instead of being cut off.
