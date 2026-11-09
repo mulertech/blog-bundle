@@ -66,6 +66,8 @@ final readonly class BlogAdminController
         private array $locales,
         private string $adminLayout,
         private string $adminRole,
+        private bool $excerpt = true,
+        private bool $aiLabel = true,
     ) {
     }
 
@@ -262,6 +264,8 @@ final readonly class BlogAdminController
             'locales' => $this->locales,
             'categories' => $this->categories->isEnabled() ? $this->categories->findAll() : null,
             'tags' => $this->tags->isEnabled() ? $this->tags->findAll() : null,
+            'excerpt' => $this->excerpt,
+            'ai_label' => $this->aiLabel,
         ]);
         $form->handleRequest($request);
 

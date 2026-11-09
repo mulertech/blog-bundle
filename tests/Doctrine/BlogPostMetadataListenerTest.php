@@ -107,7 +107,7 @@ final class BlogPostMetadataListenerTest extends TestCase
      */
     public function testTheCategoryAndTagsOfTheSiteAreMappedOnceNamed(): void
     {
-        $metadata = $this->entityManager(terms: true)->getClassMetadata(BlogPost::class);
+        $metadata = $this->entityManager(listener: new BlogPostMetadataListener(BlogCategory::class, BlogTag::class))->getClassMetadata(BlogPost::class);
         $tags = $metadata->getAssociationMapping('tags');
 
         self::assertSame(BlogCategory::class, $metadata->getAssociationTargetClass('category'));
@@ -128,18 +128,34 @@ final class BlogPostMetadataListenerTest extends TestCase
         self::assertFalse($metadata->hasAssociation('tags'));
     }
 
+    /**
+     * Off, the excerpt and the AI label leave no column behind, and the other fields keep
+     * theirs.
+     */
+    public function testASiteWithoutExcerptNorAiLabelHasNeitherColumn(): void
+    {
+        $metadata = $this->entityManager(listener: new BlogPostMetadataListener(excerpt: false, aiLabel: false))->getClassMetadata(BlogPost::class);
+
+        self::assertFalse($metadata->hasField('excerpt'));
+        self::assertFalse($metadata->hasField('aiGenerated'));
+        self::assertNotContains('excerpt', $metadata->getColumnNames());
+        self::assertNotContains('ai_generated', $metadata->getColumnNames());
+        self::assertSame('meta_description', $metadata->getColumnName('metaDescription'));
+        self::assertSame('metaDescription', $metadata->getFieldForColumn('meta_description'));
+    }
+
     public function testATermIsUniquePerLanguage(): void
     {
         foreach ([BlogCategory::class, BlogTag::class] as $class) {
-            $metadata = $this->entityManager(terms: true)->getClassMetadata($class);
+            $metadata = $this->entityManager(listener: new BlogPostMetadataListener(BlogCategory::class, BlogTag::class))->getClassMetadata($class);
 
             self::assertContains(['columns' => ['slug', 'locale']], $metadata->table['uniqueConstraints'] ?? []);
             self::assertContains(['columns' => ['translation_group']], $metadata->table['indexes'] ?? []);
         }
 
         self::assertSame(['id', 'name', 'slug', 'locale', 'translation_group', 'description', 'color'], array_map(
-            $this->entityManager(terms: true)->getClassMetadata(BlogCategory::class)->getColumnName(...),
-            $this->entityManager(terms: true)->getClassMetadata(BlogCategory::class)->getFieldNames(),
+            $this->entityManager(listener: new BlogPostMetadataListener(BlogCategory::class, BlogTag::class))->getClassMetadata(BlogCategory::class)->getColumnName(...),
+            $this->entityManager(listener: new BlogPostMetadataListener(BlogCategory::class, BlogTag::class))->getClassMetadata(BlogCategory::class)->getFieldNames(),
         ));
     }
 
@@ -151,7 +167,7 @@ final class BlogPostMetadataListenerTest extends TestCase
         self::assertArrayNotHasKey('indexes', $metadata->table);
     }
 
-    private function entityManager(NamingStrategy $namingStrategy = new UnderscoreNamingStrategy(\CASE_LOWER, true), bool $resolverFirst = true, bool $terms = false): EntityManager
+    private function entityManager(NamingStrategy $namingStrategy = new UnderscoreNamingStrategy(\CASE_LOWER, true), bool $resolverFirst = true, BlogPostMetadataListener $listener = new BlogPostMetadataListener()): EntityManager
     {
         $configuration = new Configuration();
         $configuration->setMetadataDriverImpl(new AttributeDriver([
@@ -168,9 +184,9 @@ final class BlogPostMetadataListenerTest extends TestCase
 
         if ($resolverFirst) {
             $eventManager->addEventSubscriber($resolveTargetEntities);
-            $eventManager->addEventListener(Events::loadClassMetadata, ($terms ? new BlogPostMetadataListener(BlogCategory::class, BlogTag::class) : new BlogPostMetadataListener()));
+            $eventManager->addEventListener(Events::loadClassMetadata, $listener);
         } else {
-            $eventManager->addEventListener(Events::loadClassMetadata, ($terms ? new BlogPostMetadataListener(BlogCategory::class, BlogTag::class) : new BlogPostMetadataListener()));
+            $eventManager->addEventListener(Events::loadClassMetadata, $listener);
             $eventManager->addEventSubscriber($resolveTargetEntities);
         }
 

@@ -53,7 +53,7 @@ abstract class DatabaseTestCase extends TestCase
 
         $eventManager = new EventManager();
         $eventManager->addEventSubscriber($resolveTargetEntities);
-        $eventManager->addEventListener(Events::loadClassMetadata, new BlogPostMetadataListener(BlogCategory::class, BlogTag::class));
+        $eventManager->addEventListener(Events::loadClassMetadata, $this->metadataListener());
 
         $connection = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true], $configuration);
         $this->entityManager = new EntityManager($connection, $configuration, $eventManager);
@@ -64,6 +64,11 @@ abstract class DatabaseTestCase extends TestCase
             $this->entityManager->getClassMetadata(BlogCategory::class),
             $this->entityManager->getClassMetadata(BlogTag::class),
         ]);
+    }
+
+    protected function metadataListener(): BlogPostMetadataListener
+    {
+        return new BlogPostMetadataListener(BlogCategory::class, BlogTag::class);
     }
 
     protected function post(string $title, string $locale = 'fr', ?string $publishedAt = '2026-01-01 10:00', string $content = 'Contenu.', ?string $slug = null): BlogPost

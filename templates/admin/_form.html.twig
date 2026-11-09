@@ -39,9 +39,9 @@
 
     {% if form.category is defined %}{{ form_row(form.category) }}{% endif %}
     {% if form.tags is defined %}{{ form_row(form.tags) }}{% endif %}
-    {{ form_row(form.excerpt) }}
+    {% if form.excerpt is defined %}{{ form_row(form.excerpt) }}{% endif %}
     {{ form_row(form.metaDescription) }}
-    {{ form_row(form.aiGenerated) }}
+    {% if form.aiGenerated is defined %}{{ form_row(form.aiGenerated) }}{% endif %}
 
     <div>
         {{ form_label(form.featuredImage) }}

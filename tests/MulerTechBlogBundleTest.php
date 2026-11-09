@@ -201,6 +201,22 @@ final class MulerTechBlogBundleTest extends TestCase
     }
 
     /**
+     * On by default; off, neither the mapping nor the admin form has the field.
+     */
+    public function testTheExcerptAndTheAiLabelCanBeTurnedOff(): void
+    {
+        $default = $this->load(['post_class' => BlogPost::class]);
+        self::assertTrue($default->getDefinition('mulertech_blog.doctrine.blog_post_metadata_listener')->getArgument('$excerpt'));
+        self::assertTrue($default->getDefinition('mulertech_blog.controller.admin')->getArgument('$aiLabel'));
+
+        $off = $this->load(['post_class' => BlogPost::class, 'excerpt' => false, 'ai_label' => false]);
+        $listener = $off->getDefinition('mulertech_blog.doctrine.blog_post_metadata_listener');
+        $admin = $off->getDefinition('mulertech_blog.controller.admin');
+        self::assertSame([false, false], [$listener->getArgument('$excerpt'), $listener->getArgument('$aiLabel')]);
+        self::assertSame([false, false], [$admin->getArgument('$excerpt'), $admin->getArgument('$aiLabel')]);
+    }
+
+    /**
      * A single-language site declares nothing: its default locale is the language.
      */
     public function testTheLanguageDefaultsToTheSiteDefaultLocale(): void

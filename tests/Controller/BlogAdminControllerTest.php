@@ -44,6 +44,7 @@ use Twig\RuntimeLoader\FactoryRuntimeLoader;
 final class BlogAdminControllerTest extends AdminPageTestCase
 {
     private bool $termsEnabled = true;
+    private bool $excerptAndAiLabel = true;
     private InMemoryFileManager $fileManager;
 
     protected function setUp(): void
@@ -134,7 +135,7 @@ final class BlogAdminControllerTest extends AdminPageTestCase
         $page = $this->crawl($this->controller()->new($this->request()));
 
         self::assertSame('Nouvel article', $page->filter('h1')->text());
-        foreach (['title', 'slug', 'content', 'metaDescription', 'featuredImage'] as $field) {
+        foreach (['title', 'slug', 'content', 'excerpt', 'metaDescription', 'aiGenerated', 'featuredImage'] as $field) {
             self::assertCount(1, $page->filter(sprintf('[name="blog_post[%s]"]', $field)), $field);
         }
         self::assertCount(0, $page->filter('[name="blog_post[locale]"]'), 'one language, nothing to choose');
@@ -350,6 +351,20 @@ final class BlogAdminControllerTest extends AdminPageTestCase
         self::assertCount(0, $page->filter('[name="blog_post[category]"]'));
         self::assertCount(0, $page->filter('[name="blog_post[tags][]"]'));
         self::assertCount(0, $this->crawl($this->controller()->index($this->request()))->filter('a[href="/admin/blog/categories"]'));
+    }
+
+    public function testASiteWithoutExcerptNorAiLabelShowsNeitherFieldAndStillSaves(): void
+    {
+        $this->excerptAndAiLabel = false;
+
+        $page = $this->crawl($this->controller()->new($this->request()));
+        self::assertCount(0, $page->filter('[name="blog_post[excerpt]"]'));
+        self::assertCount(0, $page->filter('[name="blog_post[aiGenerated]"]'));
+
+        $this->controller()->new($this->submit(['title' => 'Bienvenue', 'content' => 'Texte.']));
+
+        self::assertNull($this->onlyPost()->getExcerpt());
+        self::assertFalse($this->onlyPost()->isAiGenerated());
     }
 
     public function testTheListLeadsToTheCategoriesAndTags(): void
@@ -608,6 +623,8 @@ final class BlogAdminControllerTest extends AdminPageTestCase
             $locales,
             'base.html.twig',
             'ROLE_ADMIN',
+            $this->excerptAndAiLabel,
+            $this->excerptAndAiLabel,
         );
     }
 

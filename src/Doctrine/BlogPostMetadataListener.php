@@ -27,6 +27,8 @@ use MulerTech\BlogBundle\Entity\AbstractBlogTerm;
  * - A mapped superclass cannot target the site's category and tag classes, which it does
  *   not know: `category` and `tags` are mapped here, once the site names them. The names
  *   are those Doctrine gives any relation, `category_id` and `blog_post_blog_tag`.
+ * - A site that turns the excerpt or the AI label off has no column for it: the field is
+ *   removed from the mapping, and the property keeps its default, empty and `false`.
  */
 final readonly class BlogPostMetadataListener
 {
@@ -37,6 +39,8 @@ final readonly class BlogPostMetadataListener
     public function __construct(
         private ?string $categoryClass = null,
         private ?string $tagClass = null,
+        private bool $excerpt = true,
+        private bool $aiLabel = true,
     ) {
     }
 
@@ -56,6 +60,14 @@ final readonly class BlogPostMetadataListener
 
         if (!is_subclass_of($metadata->getName(), AbstractBlogPost::class)) {
             return;
+        }
+
+        if (!$this->excerpt) {
+            $this->unmapField($metadata, 'excerpt');
+        }
+
+        if (!$this->aiLabel) {
+            $this->unmapField($metadata, 'aiGenerated');
         }
 
         $this->uniquePerLanguage($metadata);
@@ -100,6 +112,18 @@ final readonly class BlogPostMetadataListener
     {
         $metadata->table['uniqueConstraints'][] = ['columns' => ['slug', 'locale']];
         $metadata->table['indexes'][] = ['columns' => ['translation_group']];
+    }
+
+    /**
+     * The accessors were copied from the mapped superclass before this listener runs: one
+     * left behind would still have the field written on every insert.
+     *
+     * @param ClassMetadata<object> $metadata
+     */
+    private function unmapField(ClassMetadata $metadata, string $field): void
+    {
+        $column = $metadata->getColumnName($field);
+        unset($metadata->fieldMappings[$field], $metadata->fieldNames[$column], $metadata->columnNames[$field], $metadata->propertyAccessors[$field]);
     }
 
     /**

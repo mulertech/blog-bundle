@@ -65,22 +65,11 @@ class BlogPostType extends AbstractType
                 'label' => 'admin.form.content',
                 'constraints' => [new Assert\NotBlank(message: 'mulertech_blog.content.blank')],
             ])
-            ->add('excerpt', TextareaType::class, [
-                'label' => 'admin.form.excerpt',
-                'help' => 'admin.form.excerpt_help',
-                'required' => false,
-                'attr' => ['rows' => 3],
-            ])
             ->add('metaDescription', TextType::class, [
                 'label' => 'admin.form.meta_description',
                 'help' => 'admin.form.meta_description_help',
                 'required' => false,
                 'constraints' => [new Assert\Length(max: 255)],
-            ])
-            ->add('aiGenerated', CheckboxType::class, [
-                'label' => 'admin.form.ai_generated',
-                'help' => 'admin.form.ai_generated_help',
-                'required' => false,
             ])
             ->add('featuredImage', FileType::class, [
                 'label' => 'admin.form.featured_image',
@@ -96,6 +85,23 @@ class BlogPostType extends AbstractType
                     new CoverDimensions(),
                 ])],
             ]);
+
+        if ($options['excerpt']) {
+            $builder->add('excerpt', TextareaType::class, [
+                'label' => 'admin.form.excerpt',
+                'help' => 'admin.form.excerpt_help',
+                'required' => false,
+                'attr' => ['rows' => 3],
+            ]);
+        }
+
+        if ($options['ai_label']) {
+            $builder->add('aiGenerated', CheckboxType::class, [
+                'label' => 'admin.form.ai_generated',
+                'help' => 'admin.form.ai_generated_help',
+                'required' => false,
+            ]);
+        }
 
         // A term is shown with its language when the site has several: two versions of a
         // category share a name more often than not.
@@ -154,6 +160,10 @@ class BlogPostType extends AbstractType
             // The terms to choose from, null on a site without categories or tags.
             ->setDefaults(['categories' => null, 'tags' => null])
             ->setAllowedTypes('categories', ['null', AbstractBlogCategory::class.'[]'])
-            ->setAllowedTypes('tags', ['null', AbstractBlogTag::class.'[]']);
+            ->setAllowedTypes('tags', ['null', AbstractBlogTag::class.'[]'])
+            // Off on a site that has no column for them (`mulertech_blog.excerpt`, `ai_label`).
+            ->setDefaults(['excerpt' => true, 'ai_label' => true])
+            ->setAllowedTypes('excerpt', 'bool')
+            ->setAllowedTypes('ai_label', 'bool');
     }
 }
