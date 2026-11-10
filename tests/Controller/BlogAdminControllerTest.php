@@ -300,6 +300,10 @@ final class BlogAdminControllerTest extends AdminPageTestCase
         $page = $this->crawl($this->controller()->new($this->request()));
         self::assertSame(['', (string) $hosting->getId()], $page->filter('select[name="blog_post[category]"] option')->each(static fn (Crawler $option): string => (string) $option->attr('value')));
         self::assertCount(2, $page->filter('input[name="blog_post[tags][]"]'));
+        // In columns, each box beside its own name: a site with dozens of tags would
+        // otherwise stretch the form into one long column.
+        self::assertStringContainsString('lg:grid-cols-6', (string) $page->filter('#blog_post_tags')->attr('class'));
+        self::assertEqualsCanonicalizing(['Sécurité', 'Performance'], $page->filter('#blog_post_tags > div')->each(static fn (Crawler $option): string => $option->filter('input + label')->text()));
 
         $this->controller()->new($this->submit([
             'title' => 'Classé',

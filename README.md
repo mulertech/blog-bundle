@@ -316,6 +316,13 @@ final class BlogPostType extends AbstractType
     {
         return BaseBlogPostType::class;
     }
+
+    // Named after the class, the prefix would be `blog_post`, the bundle's own: the form
+    // would then fail to render, its block names appearing twice.
+    public function getBlockPrefix(): string
+    {
+        return 'article';
+    }
 }
 ```
 
@@ -327,10 +334,27 @@ The admin form carries its own form theme, `@MulerTechBlog/form/theme.html.twig`
 |---|---|
 | `admin/index.html.twig` | The list |
 | `admin/edit.html.twig` | Creation and edition |
-| `admin/_actions.html.twig` | Status, publish or unpublish, delete |
+| `admin/_actions.html.twig` | The bar above the form: status, preview, publication, delete |
+| `admin/_publication.html.twig` | Publish, unpublish and schedule, in that bar and at the end of the preview |
+| `admin/preview.html.twig` | The preview, in the public template of the article |
 | `admin/_form.html.twig` | The form, with the cover cropper |
 | `admin/_files.html.twig` | The attached files |
 | `form/theme.html.twig` | The form theme of the admin form |
+
+A button is added or restyled without copying the whole bar, by extending the bundle's template and overriding one block: `preview_link` in `_actions.html.twig`, `publish` in `_publication.html.twig`. A button added to `publish` appears both above the form and at the end of the preview, where the review ends:
+
+```twig
+{# templates/bundles/MulerTechBlogBundle/admin/_publication.html.twig #}
+{% extends '@!MulerTechBlog/admin/_publication.html.twig' %}
+
+{% block publish %}
+    <form method="post" action="{{ path('app_blog_publish_reviewed', {id: post.id}) }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('publish_reviewed' ~ post.id) }}">
+        <button type="submit">Publish after review</button>
+    </form>
+    {{ parent() }}
+{% endblock %}
+```
 
 ### 6. Search engines and social platforms
 

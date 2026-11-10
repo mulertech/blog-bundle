@@ -71,3 +71,19 @@
     {%- set attr = attr|merge({class: attr.class|default('h-4 w-4 rounded border-gray-300')}) -%}
     {{- parent() -}}
 {%- endblock checkbox_widget -%}
+
+{#
+    Several columns: a site with dozens of tags would otherwise list them in one column as
+    long as the rest of the form.
+#}
+{%- block choice_widget_expanded -%}
+    {%- set attr = attr|merge({class: attr.class|default('grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6')}) -%}
+    <div {{ block('widget_container_attributes') }}>
+        {%- for child in form -%}
+            <div class="flex min-w-0 items-center gap-2">
+                {{- form_widget(child) -}}
+                {{- form_label(child, null, {translation_domain: choice_translation_domain}) -}}
+            </div>
+        {%- endfor -%}
+    </div>
+{%- endblock choice_widget_expanded -%}

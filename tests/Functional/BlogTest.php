@@ -183,8 +183,34 @@ final class BlogTest extends FunctionalTestCase
         self::assertResponseIsSuccessful();
         self::assertSame(0, $this->article()->getViewCount(), 'a preview is not a visit');
 
-        $this->client->request('GET', '/fr/blog/brouillon-a-relire');
+        $this->client->request('GET', '/blog/brouillon-a-relire');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'the draft stays offline');
+    }
+
+    /**
+     * The review ends at the bottom of the preview: the article is published from there,
+     * without going back to the edit form.
+     */
+    public function testADraftIsPublishedFromTheEndOfItsPreview(): void
+    {
+        $this->client->loginUser(new Editor());
+        $form = $this->client->request('GET', '/admin/blog/new')->selectButton('Enregistrer')->form([
+            'blog_post[title]' => 'Relu jusqu\'au bout',
+            'blog_post[content]' => 'Texte.',
+        ]);
+        $this->client->submit($form);
+        $id = $this->article()->getId();
+
+        $page = $this->client->request('GET', '/admin/blog/'.$id.'/preview');
+        $review = $page->filter('section[aria-labelledby=mulertech-blog-review]');
+
+        self::assertSame('Fin de la relecture', $review->filter('h2')->text());
+        $this->client->submit($review->selectButton('Publier')->form());
+
+        self::assertResponseRedirects('/admin/blog/'.$id);
+        self::assertTrue($this->article()->isPublished());
+        $this->client->request('GET', '/blog/relu-jusqu-au-bout');
+        self::assertResponseIsSuccessful();
     }
 
     public function testThePreviewIsClosedToAnonymousVisitors(): void

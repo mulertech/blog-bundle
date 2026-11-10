@@ -1,6 +1,7 @@
 {#
     The article in the site's public template, with a banner saying it is a preview: the
     template is the one the site may have replaced, so the preview shows what readers will.
+    The publication buttons follow the article, where its review ends.
 #}
 {% extends '@MulerTechBlog/blog/show.html.twig' %}
 
@@ -10,4 +11,10 @@
         <a href="{{ path('mulertech_blog_admin_edit', {id: post.id}) }}" class="ml-2 font-semibold text-white underline">{{ 'admin.preview.back'|trans({}, 'MulerTechBlogBundle') }}</a>
     </div>
     {{ parent() }}
+    <section class="border-t border-gray-200 bg-gray-50 px-4 py-6" aria-labelledby="mulertech-blog-review">
+        <div class="mx-auto flex max-w-4xl flex-wrap items-center justify-center gap-3">
+            <h2 id="mulertech-blog-review" class="w-full text-center text-sm font-semibold text-gray-700 sm:mr-auto sm:w-auto sm:text-left">{{ 'admin.preview.review'|trans({}, 'MulerTechBlogBundle') }}</h2>
+            {% include '@MulerTechBlog/admin/_publication.html.twig' %}
+        </div>
+    </section>
 {% endblock %}

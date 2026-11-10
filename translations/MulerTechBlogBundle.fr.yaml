@@ -104,6 +104,7 @@ admin:
         banner_draft: 'Aperçu : cet article n''est pas publié. Vous voyez sa dernière version enregistrée.'
         banner_published: 'Aperçu de la dernière version enregistrée.'
         back: Revenir à l'édition
+        review: 'Fin de la relecture'
     markdown:
         bold: 'Gras'
         bold_example: '**texte**'
