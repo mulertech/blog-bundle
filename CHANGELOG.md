@@ -1,16 +1,31 @@
 # Release notes for blog-bundle
 
+## v1.7.0 - 2026-11-10
+
+### What's new
+
+- **"View article" button**: in the bar above the edit form, the link to a published article is a button, like the preview one, rather than a plain link.
+- **`view_link` block** in `admin/_actions.html.twig`: a site restyles that button by extending `@!MulerTechBlog/admin/_actions.html.twig` and overriding this block alone, as it does with `preview_link`.
+
+### Upgrading
+
+No configuration or database change.
+
 ## v1.6.0 - 2026-11-10
 
 ### What's new
 
 - **Publish from the end of the preview**: the preview ends with a "review" section holding the publication buttons (publish, unpublish, schedule), so an article is published where its review ends, without going back to the edit form.
+  
 - **Overridable publication buttons**: the publish, unpublish and schedule buttons live in their own template, `admin/_publication.html.twig`, shown both above the edit form and at the end of the preview. A site adds or restyles a button by extending the bundle's template and overriding one block, without copying the whole bar:
+  
   - `publish` in `admin/_publication.html.twig`: a button added there appears in both places;
   - `preview_link` in `admin/_actions.html.twig`.
   
 - **Preview button**: "Preview" is a button rather than a plain link.
+  
 - **Tags in columns**: expanded choices (tags) are laid out in a grid of up to six columns, each box beside its own label, so a long list of tags no longer stretches the form.
+  
 
 ### Upgrading
 
@@ -28,6 +43,7 @@ The excerpt and the AI label can be turned off, for a blog whose articles are al
   mulertech_blog:
       excerpt: false
       ai_label: false
+  
   
   
   ```
