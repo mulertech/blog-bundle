@@ -1,5 +1,21 @@
 # Release notes for blog-bundle
 
+## v1.6.0 - 2026-11-10
+
+### What's new
+
+- **Publish from the end of the preview**: the preview ends with a "review" section holding the publication buttons (publish, unpublish, schedule), so an article is published where its review ends, without going back to the edit form.
+- **Overridable publication buttons**: the publish, unpublish and schedule buttons live in their own template, `admin/_publication.html.twig`, shown both above the edit form and at the end of the preview. A site adds or restyles a button by extending the bundle's template and overriding one block, without copying the whole bar:
+  - `publish` in `admin/_publication.html.twig`: a button added there appears in both places;
+  - `preview_link` in `admin/_actions.html.twig`.
+  
+- **Preview button**: "Preview" is a button rather than a plain link.
+- **Tags in columns**: expanded choices (tags) are laid out in a grid of up to six columns, each box beside its own label, so a long list of tags no longer stretches the form.
+
+### Upgrading
+
+No configuration or database change. A site that copied `admin/_actions.html.twig` into `templates/bundles/MulerTechBlogBundle/` should replace the copy with a template that extends `@!MulerTechBlog/admin/_actions.html.twig` and overrides only the block it changes. A full copy keeps working, but it does not get the shared publication buttons and must be kept in sync by hand.
+
 ## v1.5.0 - 2026-11-09
 
 The excerpt and the AI label can be turned off, for a blog whose articles are all written by hand.
@@ -12,6 +28,7 @@ The excerpt and the AI label can be turned off, for a blog whose articles are al
   mulertech_blog:
       excerpt: false
       ai_label: false
+  
   
   ```
 - With a setting off, the property keeps its default value (`null` for the excerpt, `false` for the AI flag). The card shows no excerpt, and the article never carries the AI label.
