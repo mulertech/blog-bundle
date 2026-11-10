@@ -341,7 +341,7 @@ The admin form carries its own form theme, `@MulerTechBlog/form/theme.html.twig`
 | `admin/_files.html.twig` | The attached files |
 | `form/theme.html.twig` | The form theme of the admin form |
 
-A button is added or restyled without copying the whole bar, by extending the bundle's template and overriding one block: `preview_link` in `_actions.html.twig`, `publish` in `_publication.html.twig`. A button added to `publish` appears both above the form and at the end of the preview, where the review ends:
+A button is added or restyled without copying the whole bar, by extending the bundle's template and overriding one block: `preview_link` and `view_link` in `_actions.html.twig`, `publish` in `_publication.html.twig`. A button added to `publish` appears both above the form and at the end of the preview, where the review ends:
 
 ```twig
 {# templates/bundles/MulerTechBlogBundle/admin/_publication.html.twig #}

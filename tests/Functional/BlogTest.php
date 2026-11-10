@@ -209,8 +209,11 @@ final class BlogTest extends FunctionalTestCase
 
         self::assertResponseRedirects('/admin/blog/'.$id);
         self::assertTrue($this->article()->isPublished());
-        $this->client->request('GET', '/blog/relu-jusqu-au-bout');
+        $edit = $this->client->followRedirect();
+        self::assertStringContainsString('rounded-lg', (string) $edit->selectLink('Voir l\'article')->attr('class'), 'the published article is opened from a button, like its preview');
+        $this->client->click($edit->selectLink('Voir l\'article')->link());
         self::assertResponseIsSuccessful();
+        self::assertSelectorTextContains('h1', 'Relu jusqu\'au bout');
     }
 
     public function testThePreviewIsClosedToAnonymousVisitors(): void

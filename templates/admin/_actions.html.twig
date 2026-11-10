@@ -16,7 +16,9 @@
         <a href="{{ path('mulertech_blog_admin_preview', {id: post.id}) }}" target="_blank" class="rounded-lg bg-sky-100 px-4 py-2 font-semibold text-sky-900 hover:bg-sky-200">{{ 'admin.preview.open'|trans({}, 'MulerTechBlogBundle') }}</a>
     {% endblock %}
     {% if post.published %}
-        <a href="{{ mulertech_blog_post_url(post) }}" target="_blank" class="text-gray-900 underline">{{ 'admin.view'|trans({}, 'MulerTechBlogBundle') }}</a>
+        {% block view_link %}
+            <a href="{{ mulertech_blog_post_url(post) }}" target="_blank" class="rounded-lg bg-green-700 px-4 py-2 font-semibold text-white hover:bg-green-600">{{ 'admin.view'|trans({}, 'MulerTechBlogBundle') }}</a>
+        {% endblock %}
     {% endif %}
     {% include '@MulerTechBlog/admin/_publication.html.twig' %}
     <form method="post" action="{{ path('mulertech_blog_admin_delete', {id: post.id}) }}" data-mulertech-blog-confirm="{{ 'admin.delete_confirm'|trans({'%title%': post.title}, 'MulerTechBlogBundle') }}">
