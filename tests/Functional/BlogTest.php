@@ -202,10 +202,12 @@ final class BlogTest extends FunctionalTestCase
         $id = $this->article()->getId();
 
         $page = $this->client->request('GET', '/admin/blog/'.$id.'/preview');
-        $review = $page->filter('section[aria-labelledby=mulertech-blog-review]');
+        $panel = $page->filter('section[aria-labelledby=mulertech-blog-publication]');
 
-        self::assertSame('Fin de la relecture', $review->filter('h2')->text());
-        $this->client->submit($review->selectButton('Publier')->form());
+        self::assertSame('Publication', $panel->filter('h2')->text());
+        self::assertCount(1, $panel->nextAll()->filter('nav'), 'the panel follows the article, before the way back to the list');
+        self::assertCount(1, $panel->filter('form[action$="/schedule"]'));
+        $this->client->submit($panel->selectButton('Publier')->form());
 
         self::assertResponseRedirects('/admin/blog/'.$id);
         self::assertTrue($this->article()->isPublished());

@@ -242,7 +242,7 @@ Each part of a page is a template of its own, so a site replaces only what diffe
 | Template | Part |
 |---|---|
 | `blog/index.html.twig` | The list page; its `mulertech_blog_header` block holds the heading |
-| `blog/show.html.twig` | The article page |
+| `blog/show.html.twig` | The article page; its `after_article` block, empty, sits between the article and the navigation |
 | `blog/_search.html.twig` | The search form |
 | `blog/_filter.html.twig` | The category or tag the list is filtered by, with the category's description |
 | `blog/_card.html.twig` | An article in the list: square thumbnail cut from the centre of the featured image, category, title, date, reading time, views, excerpt, "Lire la suite" |
@@ -253,6 +253,15 @@ Each part of a page is a template of its own, so a site replaces only what diffe
 | `blog/feed.xml.twig` | The Atom feed |
 
 The article page shows its category and tags, each a link to the filtered list, and the label of the European Union when `aiGenerated` is set. The label is an `<img>` served by the site's AssetMapper, `@mulertech/blog-bundle/images/eu-ai-label-ai-generated.svg`, rather than inline: the official file declares generic classes, `.cls-1` and `.cls-2`, which would collide with the site's stylesheet.
+
+What a site shows after an article, a call to action or a newsletter form, goes in the `after_article` block. The admin preview puts its publication panel in that block, in place of the site's content: what is meant for readers has no use to the one reviewing. A site replacing the whole `body` block keeps the preview's panel by declaring the block where the panel belongs:
+
+```twig
+{# templates/bundles/MulerTechBlogBundle/blog/show.html.twig #}
+{% block after_article %}
+    {% include 'blog/_newsletter.html.twig' %}
+{% endblock %}
+```
 
 A replaced template addresses the article's files with `mulertech_blog_file_url(post, file)` rather than `path('mulertech_blog_file', …)`: the function gives the public address, and during an admin preview the admin one. The public route answers only for a published article, and the admin is often signed in behind a firewall the public pages do not share, so a template building the public address shows a draft's images broken in the preview.
 
@@ -335,13 +344,14 @@ The admin form carries its own form theme, `@MulerTechBlog/form/theme.html.twig`
 | `admin/index.html.twig` | The list |
 | `admin/edit.html.twig` | Creation and edition |
 | `admin/_actions.html.twig` | The bar above the form: status, preview, publication, delete |
-| `admin/_publication.html.twig` | Publish, unpublish and schedule, in that bar and at the end of the preview |
+| `admin/_publication.html.twig` | Publish and unpublish, in that bar and in the publication panel of the preview |
+| `admin/_schedule.html.twig` | The publication date, on a line of its own below those buttons, while the article can be scheduled |
 | `admin/preview.html.twig` | The preview, in the public template of the article |
 | `admin/_form.html.twig` | The form, with the cover cropper |
 | `admin/_files.html.twig` | The attached files |
 | `form/theme.html.twig` | The form theme of the admin form |
 
-A button is added or restyled without copying the whole bar, by extending the bundle's template and overriding one block: `preview_link` and `view_link` in `_actions.html.twig`, `publish` in `_publication.html.twig`. A button added to `publish` appears both above the form and at the end of the preview, where the review ends:
+A button is added or restyled without copying the whole bar, by extending the bundle's template and overriding one block: `preview_link` and `view_link` in `_actions.html.twig`, `publish` in `_publication.html.twig`. A button added to `publish` appears both above the form and in the publication panel of the preview, where the review ends:
 
 ```twig
 {# templates/bundles/MulerTechBlogBundle/admin/_publication.html.twig #}

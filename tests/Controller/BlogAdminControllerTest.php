@@ -393,6 +393,12 @@ final class BlogAdminControllerTest extends AdminPageTestCase
         $page = $this->crawl($this->controller()->edit($this->request(), (int) $post->getId()));
         self::assertStringContainsString('Programmé pour le 14/07/2026 à 08:30', $page->text());
         self::assertSame('2026-07-14T08:30', $page->filter('input[name="published_at"]')->attr('value'));
+        // On a line of its own, below the buttons: the label, the date and the button read
+        // as one setting.
+        $schedule = $page->filter('form[action$="/schedule"]');
+        self::assertStringContainsString('border-t', (string) $schedule->attr('class'));
+        self::assertSame(['Publier le', 'Programmer'], [$schedule->filter('label')->text(), $schedule->filter('button')->text()]);
+        self::assertCount(0, $page->filter('.flex form[action$="/schedule"]'), 'not among the buttons of the first line');
         self::assertStringContainsString('Publier maintenant', $page->text());
 
         $this->controller()->publish($this->post_(['_token' => self::TOKEN]), (int) $post->getId());

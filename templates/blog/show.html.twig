@@ -63,6 +63,9 @@
             </div>
 
             {% include '@MulerTechBlog/blog/_share.html.twig' %}
+            {# What the site shows after the article, before the ways out of the page. The
+               admin preview puts its publication panel there in place of it. #}
+            {% block after_article %}{% endblock %}
             {% include '@MulerTechBlog/blog/_navigation.html.twig' %}
         </div>
     </article>

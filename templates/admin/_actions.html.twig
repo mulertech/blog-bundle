@@ -1,28 +1,35 @@
 {#
-    The bar above the edit form. A site changes one part of it by extending this template
+    The bar above the edit form: the status and the buttons on a first line, the publication
+    date on a second. A site changes one part of it by extending this template
     (`@!MulerTechBlog/admin/_actions.html.twig`) and overriding that part's block.
 #}
-<div class="mb-6 flex flex-wrap items-center gap-3 rounded-xl bg-white p-4 shadow">
-    <span class="mr-auto text-gray-700">
-        {% if post is mulertech_blog_scheduled %}
-            {{ 'admin.scheduled_on'|trans({'%date%': post.publishedAt|date('admin.datetime_format'|trans({}, 'MulerTechBlogBundle'))}, 'MulerTechBlogBundle') }}
-        {% elseif post.published %}
-            {{ 'admin.published_on'|trans({'%date%': post.publishedAt|date('blog.date_format'|trans({}, 'MulerTechBlogBundle'))}, 'MulerTechBlogBundle') }}
-        {% else %}
-            {{ 'admin.draft'|trans({}, 'MulerTechBlogBundle') }}
-        {% endif %}
-    </span>
-    {% block preview_link %}
-        <a href="{{ path('mulertech_blog_admin_preview', {id: post.id}) }}" target="_blank" class="rounded-lg bg-sky-100 px-4 py-2 font-semibold text-sky-900 hover:bg-sky-200">{{ 'admin.preview.open'|trans({}, 'MulerTechBlogBundle') }}</a>
-    {% endblock %}
-    {% if post.published %}
-        {% block view_link %}
-            <a href="{{ mulertech_blog_post_url(post) }}" target="_blank" class="rounded-lg bg-green-700 px-4 py-2 font-semibold text-white hover:bg-green-600">{{ 'admin.view'|trans({}, 'MulerTechBlogBundle') }}</a>
+<div class="mb-6 space-y-4 rounded-xl bg-white p-4 shadow">
+    <div class="flex flex-wrap items-center gap-3">
+        <p class="mr-auto inline-flex items-center gap-2 text-lg font-semibold text-gray-900">
+            {% if post is mulertech_blog_scheduled %}
+                <span class="h-2.5 w-2.5 rounded-full bg-amber-500" aria-hidden="true"></span>
+                {{ 'admin.scheduled_on'|trans({'%date%': post.publishedAt|date('admin.datetime_format'|trans({}, 'MulerTechBlogBundle'))}, 'MulerTechBlogBundle') }}
+            {% elseif post.published %}
+                <span class="h-2.5 w-2.5 rounded-full bg-green-600" aria-hidden="true"></span>
+                {{ 'admin.published_on'|trans({'%date%': post.publishedAt|date('blog.date_format'|trans({}, 'MulerTechBlogBundle'))}, 'MulerTechBlogBundle') }}
+            {% else %}
+                <span class="h-2.5 w-2.5 rounded-full bg-gray-400" aria-hidden="true"></span>
+                {{ 'admin.draft'|trans({}, 'MulerTechBlogBundle') }}
+            {% endif %}
+        </p>
+        {% block preview_link %}
+            <a href="{{ path('mulertech_blog_admin_preview', {id: post.id}) }}" target="_blank" class="rounded-lg bg-sky-100 px-4 py-2 font-semibold text-sky-900 hover:bg-sky-200">{{ 'admin.preview.open'|trans({}, 'MulerTechBlogBundle') }}</a>
         {% endblock %}
-    {% endif %}
-    {% include '@MulerTechBlog/admin/_publication.html.twig' %}
-    <form method="post" action="{{ path('mulertech_blog_admin_delete', {id: post.id}) }}" data-mulertech-blog-confirm="{{ 'admin.delete_confirm'|trans({'%title%': post.title}, 'MulerTechBlogBundle') }}">
-        <input type="hidden" name="_token" value="{{ csrf_token('mulertech_blog_delete_' ~ post.id) }}">
-        <button type="submit" class="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-500">{{ 'admin.delete'|trans({}, 'MulerTechBlogBundle') }}</button>
-    </form>
+        {% if post.published %}
+            {% block view_link %}
+                <a href="{{ mulertech_blog_post_url(post) }}" target="_blank" class="rounded-lg bg-green-700 px-4 py-2 font-semibold text-white hover:bg-green-600">{{ 'admin.view'|trans({}, 'MulerTechBlogBundle') }}</a>
+            {% endblock %}
+        {% endif %}
+        {% include '@MulerTechBlog/admin/_publication.html.twig' %}
+        <form method="post" action="{{ path('mulertech_blog_admin_delete', {id: post.id}) }}" data-mulertech-blog-confirm="{{ 'admin.delete_confirm'|trans({'%title%': post.title}, 'MulerTechBlogBundle') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('mulertech_blog_delete_' ~ post.id) }}">
+            <button type="submit" class="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-500">{{ 'admin.delete'|trans({}, 'MulerTechBlogBundle') }}</button>
+        </form>
+    </div>
+    {% include '@MulerTechBlog/admin/_schedule.html.twig' %}
 </div>

@@ -1,7 +1,8 @@
 {#
-    The buttons that change when readers see an article, shown above the edit form and below
-    the preview, where the review ends. Each one is a flex item: the page including them lays
-    them out. A site adds its own around the publish button by overriding the `publish` block.
+    The buttons that change when readers see an article, shown above the edit form and at
+    the end of the preview, where the review ends. Each one is a flex item: the page including
+    them lays them out. A site adds its own around the publish button by overriding the
+    `publish` block.
 #}
 {% if post.published %}
     <form method="post" action="{{ path('mulertech_blog_admin_unpublish', {id: post.id}) }}">
@@ -16,16 +17,4 @@
             <button type="submit" class="rounded-lg bg-gray-900 px-4 py-2 font-semibold text-white hover:bg-gray-700">{{ (post.published ? 'admin.publish_now' : 'admin.publish')|trans({}, 'MulerTechBlogBundle') }}</button>
         </form>
     {% endblock %}
-{% endif %}
-{# An article published before keeps its date: only a draft never shown, or one still
-   waiting for its date, can be scheduled. #}
-{% if post.publishedAt is null or post is mulertech_blog_scheduled %}
-    <form method="post" action="{{ path('mulertech_blog_admin_schedule', {id: post.id}) }}" class="flex items-center gap-2">
-        <input type="hidden" name="_token" value="{{ csrf_token('mulertech_blog_publish_' ~ post.id) }}">
-        <label for="mulertech-blog-schedule" class="text-sm text-gray-700">{{ 'admin.schedule_label'|trans({}, 'MulerTechBlogBundle') }}</label>
-        <input type="datetime-local" id="mulertech-blog-schedule" name="published_at" required
-               value="{{ post is mulertech_blog_scheduled ? post.publishedAt|date('Y-m-d\\TH:i') : '' }}"
-               class="rounded-lg border border-gray-300 px-3 py-2 text-sm">
-        <button type="submit" class="rounded-lg bg-gray-100 px-4 py-2 font-semibold text-gray-900 hover:bg-gray-200">{{ 'admin.schedule'|trans({}, 'MulerTechBlogBundle') }}</button>
-    </form>
 {% endif %}
