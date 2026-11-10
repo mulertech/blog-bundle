@@ -1,5 +1,20 @@
 # Release notes for blog-bundle
 
+## v1.8.0 - 2026-11-10
+
+### What's new
+
+- **Clearer status in the edit page**: the status above the edit form (draft, scheduled, published) is larger, with a coloured dot.
+- **Scheduling on its own line**: the "Publish on" label, the date field and the "Schedule" button sit on a second line of that bar, so they read as one setting. The line shows only while the article can be scheduled. The form lives in its own template, `admin/_schedule.html.twig`.
+- **"Publication" panel in the preview**: the panel holding the publication buttons and the schedule form is titled "Publication" and sits right after the article, before the navigation.
+- **`after_article` block** in `blog/show.html.twig`, between the article and the navigation: a site puts there what it shows readers after an article (a call to action, a newsletter form). The preview puts its publication panel in that block, in place of the site's content.
+
+### Upgrading
+
+- `admin/_publication.html.twig` no longer holds the schedule form, which moved to `admin/_schedule.html.twig`. A site overriding only the `publish` block has nothing to change.
+- A site replacing the whole `body` block of `blog/show.html.twig` declares `{% block after_article %}…{% endblock %}` where the preview's panel belongs; otherwise the panel does not show in the preview.
+- The translation key `admin.preview.review` is renamed `admin.preview.publication`.
+
 ## v1.7.0 - 2026-11-10
 
 ### What's new
@@ -43,6 +58,7 @@ The excerpt and the AI label can be turned off, for a blog whose articles are al
   mulertech_blog:
       excerpt: false
       ai_label: false
+  
   
   
   
