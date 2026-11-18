@@ -92,6 +92,23 @@ final class BlogMediaManagerTest extends DatabaseTestCase
         self::assertSame([$author, $author], array_column($this->fileManager->uploads, 'uploader'));
     }
 
+    /**
+     * A site whose user cannot be an uploader, its id not being an integer, names the one
+     * the files are stored on behalf of: the logged-in user is then not asked.
+     */
+    public function testTheConfiguredUploaderStoresTheFilesOfTheAdmin(): void
+    {
+        $this->tokenStorage->setToken(new UsernamePasswordToken(new InMemoryUser('admin', null, ['ROLE_ADMIN']), 'main', ['ROLE_ADMIN']));
+        $site = new AdminUser();
+        $manager = new BlogMediaManager($this->fileManager, $this->tokenStorage, $this->entityManager, $site);
+        $post = $this->post('Article');
+
+        $manager->setCover($post, $this->png('a.png', 1200, 675));
+        $manager->attach($post, $this->png('b.png', 10, 10));
+
+        self::assertSame([$site, $site], array_column($this->fileManager->uploads, 'uploader'));
+    }
+
     public function testATransparentCoverKeepsItsTransparency(): void
     {
         $post = $this->post('Illustré');

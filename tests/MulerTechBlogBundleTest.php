@@ -265,6 +265,15 @@ final class MulerTechBlogBundleTest extends TestCase
         self::assertSame(ContainerInterface::IGNORE_ON_INVALID_REFERENCE, $reference->getInvalidBehavior());
     }
 
+    public function testTheFilesAreStoredOnBehalfOfTheConfiguredUploaderWhenOneIsNamed(): void
+    {
+        self::assertNull($this->load(['post_class' => BlogPost::class])->getDefinition('mulertech_blog.media_manager')->getArgument('$configuredUploader'));
+
+        $reference = $this->load(['post_class' => BlogPost::class, 'uploader' => 'app.blog_uploader'])->getDefinition('mulertech_blog.media_manager')->getArgument('$configuredUploader');
+        self::assertInstanceOf(Reference::class, $reference);
+        self::assertSame('app.blog_uploader', (string) $reference);
+    }
+
     public function testTheAddressesFollowTheDeclaredLanguages(): void
     {
         self::assertSame(['fr', 'en'], $this->load(['post_class' => BlogPost::class, 'locales' => ['fr', 'en']])->getDefinition('mulertech_blog.post_url_generator')->getArgument('$locales'));

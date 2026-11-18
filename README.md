@@ -28,7 +28,7 @@ From a Symfony application with Doctrine, Twig and AssetMapper, in this order. E
 
     The `cache:clear` Composer runs afterwards fails, naming `mulertech_file.storage_directory`: the bundles refuse to boot without their configuration, which steps 2 to 5 provide.
 
-2. Set up `mulertech/file-bundle`, which stores the featured images and attached files: a file entity extending `MulerTech\FileBundle\Entity\AbstractFile`, and its `storage_directory` and `file_class`, as its README says. The logged-in user who writes articles must implement `MulerTech\FileBundle\Model\FileUploaderInterface`. In production, `storage_directory` must be a persistent volume, included in the backups: inside the container alone, it is emptied by every deployment, and the articles lose their images.
+2. Set up `mulertech/file-bundle`, which stores the featured images and attached files: a file entity extending `MulerTech\FileBundle\Entity\AbstractFile`, and its `storage_directory` and `file_class`, as its README says. The logged-in user who writes articles must implement `MulerTech\FileBundle\Model\FileUploaderInterface`, unless `uploader` names another one ([5. Administration](#5-administration)). In production, `storage_directory` must be a persistent volume, included in the backups: inside the container alone, it is emptied by every deployment, and the articles lose their images.
 3. Set up `mulertech/seo-bundle`, which declares the pages to search engines and derives the sharing images: its configuration, a `SeoCompanyInfoProviderInterface` service and its routes, as its README says. Its `default_image` is shared for an article without featured image.
 4. Create the blog post entity and point `FileInterface` at the file entity ([1. The blog post entity](#1-the-blog-post-entity)). For categories and tags, create their entities too ([Categories and tags](#categories-and-tags)).
 5. Name the entity in `config/packages/mulertech_blog.yaml` ([Configuration](#configuration)).
@@ -331,7 +331,15 @@ Every admin action checks `admin_role` itself, whatever the firewall says, and e
 
 Files are stored through `mulertech/file-bundle` under a name starting with the article's id, the same on every site whatever its directory strategy: `blog/images/image-12-<unique>.webp` for a cover, `blog/files/file-12-<name>-<unique>.pdf` for an attached file. A file on disk is matched to its article at a glance, whoever uploaded it. A file belongs to one article: removing it from the article, or deleting the article, deletes it from the storage.
 
-The uploader is the logged-in user, which must implement `MulerTech\FileBundle\Model\FileUploaderInterface`. A site storing files without a session, an API fed by an automation or an import, passes the uploader itself: `BlogMediaManager::setCover($post, $image, $author)` and `attach($post, $file, $author)`. The uploader is not stored on the file by file-bundle: it only feeds the upload log, and the site's own file entity when it keeps one.
+The uploader is the logged-in user, which must implement `MulerTech\FileBundle\Model\FileUploaderInterface`. A site whose user cannot, its id not being an integer, names the service the files are stored on behalf of; the logged-in user is then not asked:
+
+```yaml
+# config/packages/mulertech_blog.yaml
+mulertech_blog:
+    uploader: App\File\SystemUploader
+```
+
+A site storing files without a session, an API fed by an automation or an import, passes the uploader itself: `BlogMediaManager::setCover($post, $image, $author)` and `attach($post, $file, $author)`. The uploader is not stored on the file by file-bundle: it only feeds the upload log, and the site's own file entity when it keeps one.
 
 | Feature | Behaviour |
 |---|---|

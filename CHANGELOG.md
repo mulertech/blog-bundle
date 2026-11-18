@@ -1,5 +1,15 @@
 # Release notes for blog-bundle
 
+## v1.10.0 - 2026-11-18
+
+### What's new
+
+- **`uploader` setting**: the service id of the `FileUploaderInterface` the covers and attached files are stored on behalf of, when the admin passes none. A site whose user cannot implement that interface, its id being a UUID rather than an integer, could not send a cover from the admin; it names its own uploader instead. Without the setting, the logged-in user, as before.
+
+### Upgrading
+
+No change for a site whose user implements `FileUploaderInterface`.
+
 ## v1.9.0 - 2026-11-18
 
 ### What's new

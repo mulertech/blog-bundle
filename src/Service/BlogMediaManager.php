@@ -22,7 +22,8 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
  * deletes it from the storage too, so nothing is left on disk that no page shows.
  *
  * The uploader only feeds the file manager's log and a site's own file entity. It is the
- * one given, an author for an API without session, else the logged-in user.
+ * one given, an author for an API without session; else the one the site configures
+ * (`mulertech_blog.uploader`), for a site whose user cannot be one; else the logged-in user.
  */
 final readonly class BlogMediaManager
 {
@@ -45,6 +46,7 @@ final readonly class BlogMediaManager
         private FileManagerInterface $fileManager,
         private TokenStorageInterface $tokenStorage,
         private EntityManagerInterface $entityManager,
+        private ?FileUploaderInterface $configuredUploader = null,
     ) {
     }
 
@@ -143,10 +145,14 @@ final readonly class BlogMediaManager
             return $given;
         }
 
+        if (null !== $this->configuredUploader) {
+            return $this->configuredUploader;
+        }
+
         $user = $this->tokenStorage->getToken()?->getUser();
 
         if (!$user instanceof FileUploaderInterface) {
-            throw new \LogicException(sprintf('The files of an article are stored on behalf of the uploader passed to %s, else of the logged-in user, which must implement %s: %s.', self::class, FileUploaderInterface::class, null === $user ? 'no uploader was passed and no user is logged in' : $user::class.' does not'));
+            throw new \LogicException(sprintf('The files of an article are stored on behalf of the uploader passed to %s, else of the one named by mulertech_blog.uploader, else of the logged-in user, which must implement %s: %s.', self::class, FileUploaderInterface::class, null === $user ? 'no uploader was passed and no user is logged in' : $user::class.' does not'));
         }
 
         return $user;
