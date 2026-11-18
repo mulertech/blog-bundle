@@ -6,3 +6,4 @@ clover.xml
 composer.lock
 .mtdocker/
 .env.test.local
+docs/Chantiers/
