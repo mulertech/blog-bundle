@@ -1,0 +1,20 @@
+{#
+    The other versions of an article or a term, each a link to its edition, then a "Translate
+    into" link for each language it is still missing: the new one opens already linked.
+    Takes `item`, `versions` (its group, itself included), `locales`, `edit_route`,
+    `new_route` and `title`.
+#}
+{% set written = versions|map(version => version.locale) %}
+<ul class="flex flex-wrap items-center gap-2 text-sm">
+    {% for version in versions|filter(version => version.id != item.id) %}
+        <li>
+            <a href="{{ path(edit_route, {id: version.id}) }}" class="rounded bg-gray-100 px-2 py-0.5 font-semibold uppercase text-gray-900 hover:bg-gray-200"
+               title="{{ 'admin.translations.open'|trans({'%title%': title, '%locale%': version.locale}, 'MulerTechBlogBundle') }}">{{ version.locale }}</a>
+        </li>
+    {% endfor %}
+    {% for locale in locales|filter(locale => locale not in written) %}
+        <li>
+            <a href="{{ path(new_route, {translation_of: item.id, locale: locale}) }}" class="text-gray-900 underline">{{ 'admin.translations.translate'|trans({'%locale%': locale}, 'MulerTechBlogBundle') }}</a>
+        </li>
+    {% endfor %}
+</ul>

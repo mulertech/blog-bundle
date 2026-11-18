@@ -50,6 +50,22 @@ class BlogTermType extends AbstractType
             ]);
         }
 
+        if (null !== $options['translation_candidates']) {
+            // Not mapped, like the article's: the controller joins the group once checked.
+            $builder->add('translationOf', ChoiceType::class, [
+                'label' => 'admin.form.translation_of',
+                'help' => 'admin.terms.translation_of_help',
+                'mapped' => false,
+                'required' => false,
+                'placeholder' => 'admin.form.no_translation',
+                'choices' => $options['translation_candidates'],
+                'data' => $options['translation_of'],
+                'choice_value' => static fn (?AbstractBlogTerm $candidate): ?int => $candidate?->getId(),
+                'choice_label' => static fn (AbstractBlogTerm $candidate): string => sprintf('%s (%s)', $candidate->getName(), $candidate->getLocale()),
+                'choice_translation_domain' => false,
+            ]);
+        }
+
         if ($builder->getData() instanceof AbstractBlogCategory) {
             $builder->add('description', TextareaType::class, [
                 'label' => 'admin.terms.description',
@@ -68,6 +84,11 @@ class BlogTermType extends AbstractType
                 'translation_domain' => 'MulerTechBlogBundle',
             ])
             ->setRequired('locales')
-            ->setAllowedTypes('locales', 'string[]');
+            ->setAllowedTypes('locales', 'string[]')
+            // The terms of the same kind this one may be the translation of, null on a
+            // single-language site; and the one it already is a version of.
+            ->setDefaults(['translation_candidates' => null, 'translation_of' => null])
+            ->setAllowedTypes('translation_candidates', ['null', AbstractBlogTerm::class.'[]'])
+            ->setAllowedTypes('translation_of', ['null', AbstractBlogTerm::class]);
     }
 }

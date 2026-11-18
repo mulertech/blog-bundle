@@ -62,6 +62,60 @@ final readonly class BlogTermRepository
         return $this->entityManager->getRepository($this->getClass())->findBy([], ['locale' => 'ASC', 'name' => 'ASC']);
     }
 
+    /**
+     * Every version of the groups the terms belong to, themselves included, keyed by
+     * translation group and by language.
+     *
+     * @param list<AbstractBlogTerm> $terms
+     *
+     * @return array<string, list<AbstractBlogTerm>>
+     */
+    public function findGroups(array $terms): array
+    {
+        $groups = [];
+
+        foreach ($terms as $term) {
+            $groups[$term->getTranslationGroup()] = [];
+        }
+
+        if ([] === $groups) {
+            return [];
+        }
+
+        foreach ($this->entityManager->getRepository($this->getClass())->findBy(['translationGroup' => array_keys($groups)], ['locale' => 'ASC']) as $version) {
+            $groups[$version->getTranslationGroup()][] = $version;
+        }
+
+        return $groups;
+    }
+
+    /**
+     * The other versions of the term, by language.
+     *
+     * @return list<AbstractBlogTerm>
+     */
+    public function findVersions(AbstractBlogTerm $term): array
+    {
+        return array_values(array_filter(
+            $this->findGroups([$term])[$term->getTranslationGroup()],
+            static fn (AbstractBlogTerm $version): bool => $version !== $term,
+        ));
+    }
+
+    /**
+     * The version of the group named in `$locale`: a group holds one per language.
+     */
+    public function findVersion(string $translationGroup, string $locale, ?int $exceptId = null): ?AbstractBlogTerm
+    {
+        foreach ($this->entityManager->getRepository($this->getClass())->findBy(['translationGroup' => $translationGroup, 'locale' => $locale]) as $term) {
+            if ($term->getId() !== $exceptId) {
+                return $term;
+            }
+        }
+
+        return null;
+    }
+
     public function isSlugTaken(string $slug, string $locale, ?int $exceptId = null): bool
     {
         $term = $this->findBySlug($slug, $locale);

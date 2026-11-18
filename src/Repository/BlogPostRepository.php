@@ -208,6 +208,100 @@ final readonly class BlogPostRepository
     }
 
     /**
+     * The other versions of the article, drafts included, by language: what the admin links
+     * it to.
+     *
+     * @return list<AbstractBlogPost>
+     */
+    public function findVersions(AbstractBlogPost $post): array
+    {
+        return array_values(array_filter(
+            $this->findGroups([$post])[$post->getTranslationGroup()],
+            static fn (AbstractBlogPost $version): bool => $version !== $post,
+        ));
+    }
+
+    /**
+     * Every version of the groups the articles belong to, themselves included, drafts too,
+     * keyed by translation group and by language: one query for a whole page of the admin.
+     *
+     * @param list<AbstractBlogPost> $posts
+     *
+     * @return array<string, list<AbstractBlogPost>>
+     */
+    public function findGroups(array $posts): array
+    {
+        $groups = [];
+
+        foreach ($posts as $post) {
+            $groups[$post->getTranslationGroup()] = [];
+        }
+
+        if ([] === $groups) {
+            return [];
+        }
+
+        $versions = $this->results($this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from($this->postClass, 'p')
+            ->where('p.translationGroup IN (:groups)')
+            ->setParameter('groups', array_keys($groups))
+            ->orderBy('p.locale', 'ASC'));
+
+        foreach ($versions as $version) {
+            $groups[$version->getTranslationGroup()][] = $version;
+        }
+
+        return $groups;
+    }
+
+    /**
+     * The version of the group written in `$locale`, drafts included: a group holds one per
+     * language.
+     */
+    public function findVersion(string $translationGroup, string $locale, ?int $exceptId = null): ?AbstractBlogPost
+    {
+        $query = $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from($this->postClass, 'p')
+            ->where('p.translationGroup = :group')
+            ->andWhere('p.locale = :locale')
+            ->setParameter('group', $translationGroup)
+            ->setParameter('locale', $locale)
+            ->setMaxResults(1);
+
+        if (null !== $exceptId) {
+            $query->andWhere('p.id <> :id')->setParameter('id', $exceptId);
+        }
+
+        $post = $query->getQuery()->getOneOrNullResult();
+
+        return $post instanceof AbstractBlogPost ? $post : null;
+    }
+
+    /**
+     * Every article but `$post`, drafts included, by title: those it may be the translation
+     * of. Whether the language fits is checked on saving, since it is chosen in the same
+     * form.
+     *
+     * @return list<AbstractBlogPost>
+     */
+    public function findTranslationCandidates(AbstractBlogPost $post): array
+    {
+        $query = $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from($this->postClass, 'p')
+            ->orderBy('p.title', 'ASC')
+            ->addOrderBy('p.locale', 'ASC');
+
+        if (null !== $post->getId()) {
+            $query->where('p.id <> :id')->setParameter('id', $post->getId());
+        }
+
+        return $this->results($query);
+    }
+
+    /**
      * The categories holding published articles in `$locale`, by name, each with the
      * number of those articles.
      *

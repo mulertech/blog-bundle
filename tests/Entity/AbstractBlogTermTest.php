@@ -18,5 +18,9 @@ final class AbstractBlogTermTest extends TestCase
         $english->setTranslationOf($french);
 
         self::assertSame($french->getTranslationGroup(), $english->getTranslationGroup());
+
+        $english->setTranslationOf(null);
+
+        self::assertNotSame($french->getTranslationGroup(), $english->getTranslationGroup());
     }
 }

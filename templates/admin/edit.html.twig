@@ -17,6 +17,9 @@
 
         {% if post.id %}
             {% include '@MulerTechBlog/admin/_files.html.twig' %}
+            {# What the site manages for a saved article besides its fields: an album, a map.
+               Empty here; a site fills it by extending `@!MulerTechBlog/admin/edit.html.twig`. #}
+            {% block after_form %}{% endblock %}
         {% endif %}
     </div>
 

@@ -371,6 +371,115 @@ final class BlogAdminControllerTest extends AdminPageTestCase
         self::assertFalse($this->onlyPost()->isAiGenerated());
     }
 
+    public function testASingleLanguageSiteHasNoTranslationToLink(): void
+    {
+        $this->post('Bienvenue');
+
+        self::assertCount(0, $this->crawl($this->controller()->new($this->request()))->filter('[name="blog_post[translationOf]"]'));
+        self::assertCount(0, $this->crawl($this->controller()->index($this->request()))->filter('th:contains("Traductions")'));
+    }
+
+    public function testAnArticleIsSavedAsTheTranslationOfAnother(): void
+    {
+        $original = $this->post('Bienvenue');
+        $controller = $this->controller(locales: ['fr', 'en']);
+
+        $page = $this->crawl($controller->new($this->request()));
+        self::assertSame(['', (string) $original->getId()], $page->filter('[name="blog_post[translationOf]"] option')->each(static fn (Crawler $option): ?string => $option->attr('value')));
+        self::assertSame('Bienvenue (fr)', $page->filter('[name="blog_post[translationOf]"] option')->eq(1)->text());
+
+        $response = $controller->new($this->submit(['title' => 'Welcome', 'content' => 'Text.', 'locale' => 'en', 'translationOf' => (string) $original->getId()]));
+
+        self::assertInstanceOf(RedirectResponse::class, $response);
+        $translation = $this->entityManager->getRepository(BlogPost::class)->findOneBy(['locale' => 'en']);
+        self::assertSame($original->getTranslationGroup(), $translation?->getTranslationGroup());
+    }
+
+    public function testAGroupHoldsOneVersionPerLanguage(): void
+    {
+        $original = $this->post('Bienvenue');
+        $this->post('Welcome', 'en')->setTranslationOf($original);
+        $this->entityManager->flush();
+
+        $response = $this->controller(locales: ['fr', 'en'])->new($this->submit(['title' => 'Hello', 'content' => 'Text.', 'locale' => 'en', 'translationOf' => (string) $original->getId()]));
+
+        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
+        self::assertStringContainsString('« Welcome » est déjà la version en en de cet article : une seule version par langue.', $this->crawl($response)->text());
+        self::assertCount(2, $this->entityManager->getRepository(BlogPost::class)->findAll());
+    }
+
+    public function testATranslationIsInAnotherLanguage(): void
+    {
+        $original = $this->post('Bienvenue');
+
+        $response = $this->controller(locales: ['fr', 'en'])->new($this->submit(['title' => 'Salut', 'content' => 'Texte.', 'locale' => 'fr', 'translationOf' => (string) $original->getId()]));
+
+        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
+        self::assertStringContainsString('« Bienvenue » est déjà en fr : une traduction est dans une autre langue.', $this->crawl($response)->text());
+    }
+
+    public function testChangingOnlyTheLanguageStillKeepsOneVersionPerLanguage(): void
+    {
+        $original = $this->post('Bienvenue');
+        $translation = $this->post('Welcome', 'en')->setTranslationOf($original);
+        $this->entityManager->flush();
+
+        $response = $this->controller(locales: ['fr', 'en'])->edit($this->submit(['title' => 'Welcome', 'slug' => 'welcome', 'content' => 'Text.', 'locale' => 'fr', 'translationOf' => (string) $original->getId()]), (int) $translation->getId());
+
+        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
+        self::assertStringContainsString('« Bienvenue » est déjà en fr', $this->crawl($response)->text());
+    }
+
+    public function testTheEditFormShowsTheLinkedVersionAndCanUnlinkIt(): void
+    {
+        $original = $this->post('Bienvenue');
+        $translation = $this->post('Welcome', 'en')->setTranslationOf($original);
+        $this->entityManager->flush();
+        $controller = $this->controller(locales: ['fr', 'en']);
+
+        $page = $this->crawl($controller->edit($this->request(), (int) $translation->getId()));
+        self::assertSame((string) $original->getId(), $page->filter('[name="blog_post[translationOf]"] option[selected]')->attr('value'));
+
+        $controller->edit($this->submit(['title' => 'Welcome', 'slug' => 'welcome', 'content' => 'Text.', 'locale' => 'en', 'translationOf' => '']), (int) $translation->getId());
+
+        self::assertNotSame($original->getTranslationGroup(), $translation->getTranslationGroup());
+    }
+
+    public function testTheListLinksTheVersionsAndOffersTheMissingOnes(): void
+    {
+        $original = $this->post('Bienvenue');
+        $translation = $this->post('Welcome', 'en')->setTranslationOf($original);
+        $alone = $this->post('Seul');
+        $this->entityManager->flush();
+
+        $page = $this->crawl($this->controller(locales: ['fr', 'en'])->index($this->request()));
+        $row = static fn (string $title): Crawler => $page->filter('tbody tr')->reduce(static fn (Crawler $tr): bool => str_contains($tr->filter('td')->eq(0)->text(), $title));
+
+        self::assertSame('Traductions', $page->filter('th')->eq(2)->text());
+        self::assertSame(sprintf('/admin/blog/%d', $translation->getId()), $row('Bienvenue')->filter('td')->eq(2)->filter('a')->attr('href'));
+        self::assertSame('en', $row('Bienvenue')->filter('td')->eq(2)->text());
+        self::assertSame(sprintf('/admin/blog/new?translation_of=%d&locale=en', $alone->getId()), $row('Seul')->filter('td')->eq(2)->filter('a')->attr('href'));
+        self::assertSame('Traduire en en', $row('Seul')->filter('td')->eq(2)->text());
+    }
+
+    public function testTranslatingOpensANewArticleAlreadyLinked(): void
+    {
+        $original = $this->post('Bienvenue');
+
+        $page = $this->crawl($this->controller(locales: ['fr', 'en'])->new($this->request(['translation_of' => (string) $original->getId(), 'locale' => 'en'])));
+
+        self::assertSame('en', $page->filter('[name="blog_post[locale]"] option[selected]')->attr('value'));
+        self::assertSame((string) $original->getId(), $page->filter('[name="blog_post[translationOf]"] option[selected]')->attr('value'));
+    }
+
+    public function testTranslatingAnUnknownArticleAnswersNotFound(): void
+    {
+        $this->expectException(NotFoundHttpException::class);
+        $this->expectExceptionMessage('No article 99 to translate.');
+
+        $this->controller(locales: ['fr', 'en'])->new($this->request(['translation_of' => '99', 'locale' => 'en']));
+    }
+
     public function testTheListLeadsToTheCategoriesAndTags(): void
     {
         $page = $this->crawl($this->controller()->index($this->request()));

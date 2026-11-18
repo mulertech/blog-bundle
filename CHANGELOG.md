@@ -1,5 +1,22 @@
 # Release notes for blog-bundle
 
+## v1.9.0 - 2026-11-18
+
+### What's new
+
+- **English labels**: `MulerTechBlogBundle.en.yaml` and `validators.en.yaml`, with exactly the keys of the French files. A test holds both languages to the same keys, so a site keeping its own labels in parity keeps it with the bundle's.
+- **Linking the versions of an article** in the admin, on a site declaring several `locales`:
+  - "Translation of" in the form of an article, of a category and of a tag: the version in another language this one translates. A group holds one version per language, and an article whose language is already written in it is refused, naming that version. "None" takes the article out of its group.
+  - the lists show, for each article and each term, its other versions, each a link to it, and "Translate into" for each language still missing, which opens a new one already linked (`?translation_of=<id>&locale=<locale>`).
+  - `setTranslationOf(null)`, on an article or a term, takes it out of its group.
+- **`mulertech_blog_language_urls(post, translations)`**: the address of the article in each language of the site, its version in that language or else the list of that language, for the site's language switcher.
+- **`after_form` block** in `admin/edit.html.twig`, below the attached files of a saved article: a site puts there what it manages for an article besides its fields, an album or a map, without copying the page.
+- The README gains a "Multilingual site" section: routes under `/{_locale}`, linked versions, language switcher, `hreflang`.
+
+### Upgrading
+
+No configuration or database change. A single-language site sees no new field nor column.
+
 ## v1.8.0 - 2026-11-10
 
 ### What's new

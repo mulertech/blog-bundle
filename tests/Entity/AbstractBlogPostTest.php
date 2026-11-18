@@ -73,6 +73,10 @@ final class AbstractBlogPostTest extends TestCase
 
         self::assertSame($original->getTranslationGroup(), $translation->getTranslationGroup());
         self::assertSame('en', $translation->getLocale());
+
+        $translation->setTranslationOf(null);
+
+        self::assertNotSame($original->getTranslationGroup(), $translation->getTranslationGroup());
     }
 
     public function testTheCreationDateIsSetOnceOnPersist(): void

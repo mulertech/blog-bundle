@@ -389,11 +389,12 @@ abstract class AbstractBlogPost implements BlogPostingSeoInterface
     }
 
     /**
-     * Makes this article a version of `$original` in another language.
+     * Makes this article a version of `$original` in another language; null takes it out of
+     * its group, the versions left there staying together.
      */
-    public function setTranslationOf(self $original): static
+    public function setTranslationOf(?self $original): static
     {
-        $this->translationGroup = $original->getTranslationGroup();
+        $this->translationGroup = $original?->getTranslationGroup() ?? Uuid::v7()->toRfc4122();
 
         return $this;
     }

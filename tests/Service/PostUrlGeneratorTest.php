@@ -32,6 +32,23 @@ final class PostUrlGeneratorTest extends TestCase
      * The address of an article is in its own language, whatever the language of the page
      * linking to it.
      */
+    /**
+     * A language switcher leads to the translated version, never to the same slug in the
+     * other language, and to the list of a language the article is not written in.
+     */
+    public function testEachLanguageLeadsToItsVersionElseToItsList(): void
+    {
+        $urls = $this->urls('routes.yaml', ['fr', 'en', 'de']);
+        $post = new BlogPost()->setSlug('bienvenue')->setLocale('fr');
+        $translation = new BlogPost()->setSlug('welcome')->setLocale('en');
+
+        self::assertSame(
+            ['fr' => '/fr/blog/bienvenue', 'en' => '/en/blog/welcome', 'de' => '/de/blog'],
+            $urls->languages($post, [$translation]),
+        );
+        self::assertSame('https://example.com/en/blog', $urls->languages($post, [], true)['en']);
+    }
+
     public function testAMultilingualSiteAddressesEachArticleInItsLanguage(): void
     {
         $urls = $this->urls('routes.yaml', ['fr', 'en']);

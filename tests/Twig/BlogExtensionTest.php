@@ -76,7 +76,7 @@ final class BlogExtensionTest extends DatabaseTestCase
     public function testTheTemplatesReachTheFilterAndFunctionsByName(): void
     {
         self::assertSame('mulertech_blog_content', $this->extension()->getFilters()[0]->getName());
-        self::assertSame(['mulertech_blog_post_url', 'mulertech_blog_feed_url', 'mulertech_blog_file_url', 'mulertech_blog_csp_nonce'], array_map(
+        self::assertSame(['mulertech_blog_post_url', 'mulertech_blog_feed_url', 'mulertech_blog_language_urls', 'mulertech_blog_file_url', 'mulertech_blog_csp_nonce'], array_map(
             static fn (TwigFunction $function): string => $function->getName(),
             $this->extension()->getFunctions(),
         ));

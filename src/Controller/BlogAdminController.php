@@ -87,7 +87,11 @@ final readonly class BlogAdminController
             throw new NotFoundHttpException(sprintf('The admin list has %d pages, not %d.', $page->pageCount, $page->number));
         }
 
-        return $this->render('index', ['page' => $page, 'search' => $search]);
+        return $this->render('index', [
+            'page' => $page,
+            'search' => $search,
+            'groups' => $this->isMultilingual() ? $this->repository->findGroups($page->items) : [],
+        ]);
     }
 
     public function new(Request $request): Response
@@ -99,9 +103,10 @@ final readonly class BlogAdminController
             $post->setLocale($this->locales[0]);
         }
 
-        $form = $this->form($post, $request);
+        $original = $this->startTranslation($request, $post);
+        $form = $this->form($post, $request, $original);
 
-        if ($form->isSubmitted() && $form->isValid() && $this->assignSlug($form, $post) && $this->termsMatchLanguage($form, $post)) {
+        if ($form->isSubmitted() && $form->isValid() && $this->assignSlug($form, $post) && $this->termsMatchLanguage($form, $post) && $this->joinTranslationGroup($form, $post)) {
             $this->entityManager->persist($post);
             $this->entityManager->flush();
             $this->saveCover($form, $post);
@@ -117,9 +122,9 @@ final readonly class BlogAdminController
     {
         $this->denyUnlessAdmin();
         $post = $this->post($id);
-        $form = $this->form($post, $request);
+        $form = $this->form($post, $request, $this->isMultilingual() ? ($this->repository->findVersions($post)[0] ?? null) : null);
 
-        if ($form->isSubmitted() && $form->isValid() && $this->assignSlug($form, $post) && $this->termsMatchLanguage($form, $post)) {
+        if ($form->isSubmitted() && $form->isValid() && $this->assignSlug($form, $post) && $this->termsMatchLanguage($form, $post) && $this->joinTranslationGroup($form, $post)) {
             $this->entityManager->flush();
 
             if ($form->has('removeFeaturedImage') && true === $form->get('removeFeaturedImage')->getData()) {
@@ -255,9 +260,38 @@ final readonly class BlogAdminController
     }
 
     /**
+     * `?translation_of=<id>&locale=<locale>`, from the "Translate into" links of the list:
+     * the new article starts as the version of that one in that language.
+     */
+    private function startTranslation(Request $request, AbstractBlogPost $post): ?AbstractBlogPost
+    {
+        $id = $request->query->getString('translation_of');
+
+        if (!$this->isMultilingual() || '' === $id) {
+            return null;
+        }
+
+        $original = 1 === preg_match('/^[1-9]\d*$/', $id) ? $this->repository->find((int) $id) : null;
+
+        if (null === $original) {
+            throw new NotFoundHttpException(sprintf('No article %s to translate.', $id));
+        }
+
+        $locale = $request->query->getString('locale');
+
+        if (\in_array($locale, $this->locales, true)) {
+            $post->setLocale($locale);
+        }
+
+        $post->setTranslationOf($original);
+
+        return $original;
+    }
+
+    /**
      * @return FormInterface<AbstractBlogPost>
      */
-    private function form(AbstractBlogPost $post, Request $request): FormInterface
+    private function form(AbstractBlogPost $post, Request $request, ?AbstractBlogPost $translationOf = null): FormInterface
     {
         /** @var FormInterface<AbstractBlogPost> $form */
         $form = $this->formFactory->create($this->postFormType, $post, [
@@ -266,6 +300,8 @@ final readonly class BlogAdminController
             'tags' => $this->tags->isEnabled() ? $this->tags->findAll() : null,
             'excerpt' => $this->excerpt,
             'ai_label' => $this->aiLabel,
+            'translation_candidates' => $this->isMultilingual() ? $this->repository->findTranslationCandidates($post) : null,
+            'translation_of' => $translationOf,
         ]);
         $form->handleRequest($request);
 
@@ -317,6 +353,46 @@ final readonly class BlogAdminController
         }
 
         return $matches;
+    }
+
+    /**
+     * Joins the group of the article chosen as the original, or leaves the group when none
+     * is. A group holds one version per language: the language chosen must be free in it,
+     * which also holds when only the language changed.
+     *
+     * @param FormInterface<AbstractBlogPost> $form
+     */
+    private function joinTranslationGroup(FormInterface $form, AbstractBlogPost $post): bool
+    {
+        if (!$form->has('translationOf')) {
+            return true;
+        }
+
+        $field = $form->get('translationOf');
+        $original = $field->getData();
+        \assert(null === $original || $original instanceof AbstractBlogPost);
+
+        if (null !== $original && $original->getLocale() === $post->getLocale()) {
+            $field->addError(new FormError($this->translator->trans('mulertech_blog.translation.same_locale', ['%title%' => $original->getTitle(), '%locale%' => $post->getLocale()], 'validators')));
+
+            return false;
+        }
+
+        $post->setTranslationOf($original);
+        $existing = $this->repository->findVersion($post->getTranslationGroup(), $post->getLocale(), $post->getId());
+
+        if (null !== $existing) {
+            $field->addError(new FormError($this->translator->trans('mulertech_blog.translation.taken', ['%title%' => $existing->getTitle(), '%locale%' => $post->getLocale()], 'validators')));
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private function isMultilingual(): bool
+    {
+        return \count($this->locales) > 1;
     }
 
     /**

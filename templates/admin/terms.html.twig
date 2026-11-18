@@ -21,7 +21,10 @@
                 <thead class="bg-gray-50 text-left text-sm text-gray-600">
                     <tr>
                         <th class="px-4 py-3">{{ 'admin.terms.name'|trans({}, 'MulerTechBlogBundle') }}</th>
-                        {% if locales|length > 1 %}<th class="px-4 py-3">{{ 'admin.form.locale'|trans({}, 'MulerTechBlogBundle') }}</th>{% endif %}
+                        {% if locales|length > 1 %}
+                            <th class="px-4 py-3">{{ 'admin.form.locale'|trans({}, 'MulerTechBlogBundle') }}</th>
+                            <th class="px-4 py-3">{{ 'admin.translations.title'|trans({}, 'MulerTechBlogBundle') }}</th>
+                        {% endif %}
                         <th class="px-4 py-3">{{ 'admin.terms.posts'|trans({}, 'MulerTechBlogBundle') }}</th>
                         <th class="px-4 py-3"><span class="sr-only">{{ 'admin.delete'|trans({}, 'MulerTechBlogBundle') }}</span></th>
                     </tr>
@@ -30,7 +33,19 @@
                     {% for row in rows %}
                         <tr class="border-t border-gray-100">
                             <td class="px-4 py-3"><a href="{{ path('mulertech_blog_admin_' ~ kind ~ '_edit', {id: row.term.id}) }}" class="font-semibold text-gray-900 hover:underline">{{ row.term.name }}</a></td>
-                            {% if locales|length > 1 %}<td class="px-4 py-3 uppercase">{{ row.term.locale }}</td>{% endif %}
+                            {% if locales|length > 1 %}
+                                <td class="px-4 py-3 uppercase">{{ row.term.locale }}</td>
+                                <td class="px-4 py-3">
+                                    {% include '@MulerTechBlog/admin/_translations.html.twig' with {
+                                        item: row.term,
+                                        versions: groups[row.term.translationGroup],
+                                        edit_route: 'mulertech_blog_admin_' ~ kind ~ '_edit',
+                                        new_route: 'mulertech_blog_admin_' ~ kind ~ '_new',
+                                        title: row.term.name,
+                                        locales: locales,
+                                    } only %}
+                                </td>
+                            {% endif %}
                             <td class="px-4 py-3">{{ row.count }}</td>
                             <td class="px-4 py-3 text-right">
                                 <form method="post" action="{{ path('mulertech_blog_admin_' ~ kind ~ '_delete', {id: row.term.id}) }}" data-mulertech-blog-confirm="{{ 'admin.terms.delete_confirm'|trans({'%name%': row.term.name}, 'MulerTechBlogBundle') }}">

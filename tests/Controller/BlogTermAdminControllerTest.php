@@ -198,6 +198,45 @@ final class BlogTermAdminControllerTest extends AdminPageTestCase
         self::assertSame('en', $this->crawl($this->tagController(['fr', 'en'])->index())->filter('tbody td')->eq(1)->text());
     }
 
+    public function testACategoryIsSavedAsTheTranslationOfAnother(): void
+    {
+        $original = $this->category('Hébergement');
+        $controller = $this->categoryController(locales: ['fr', 'en']);
+
+        self::assertCount(0, $this->crawl($this->categoryController()->new($this->request()))->filter('[name="blog_term[translationOf]"]'), 'one language, nothing to link');
+
+        $controller->new($this->submit(['name' => 'Hosting', 'slug' => '', 'locale' => 'en', 'translationOf' => (string) $original->getId()]));
+
+        $translation = $this->entityManager->getRepository(BlogCategory::class)->findOneBy(['locale' => 'en']);
+        self::assertSame($original->getTranslationGroup(), $translation?->getTranslationGroup());
+
+        $page = $this->crawl($controller->index());
+        self::assertSame('Traductions', $page->filter('th')->eq(2)->text());
+        self::assertSame(sprintf('/admin/blog/categories/%d', $translation->getId()), $page->filter('tbody tr')->eq(1)->filter('td')->eq(2)->filter('a')->attr('href'));
+    }
+
+    public function testATermGroupHoldsOneVersionPerLanguage(): void
+    {
+        $original = $this->tag('Sécurité');
+        $this->tag('Security', 'en')->setTranslationOf($original);
+        $this->entityManager->flush();
+
+        $response = $this->tagController(['fr', 'en'])->new($this->submit(['name' => 'Safety', 'slug' => '', 'locale' => 'en', 'translationOf' => (string) $original->getId()]));
+
+        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
+        self::assertStringContainsString('« Security » est déjà la version en en de ce terme : une seule version par langue.', $this->crawl($response)->text());
+    }
+
+    public function testTranslatingATermOpensItsFormAlreadyLinked(): void
+    {
+        $original = $this->tag('Sécurité');
+
+        $page = $this->crawl($this->tagController(['fr', 'en'])->new($this->request(['translation_of' => (string) $original->getId(), 'locale' => 'en'])));
+
+        self::assertSame('en', $page->filter('[name="blog_term[locale]"] option[selected]')->attr('value'));
+        self::assertSame((string) $original->getId(), $page->filter('[name="blog_term[translationOf]"] option[selected]')->attr('value'));
+    }
+
     /**
      * @param array<string, string> $fields
      */

@@ -59,13 +59,17 @@ final readonly class BlogTermAdminController
     public function index(): Response
     {
         $this->denyUnlessAvailable();
+        $terms = $this->terms->findAll();
 
         $rows = array_map(
             fn (AbstractBlogTerm $term): array => ['term' => $term, 'count' => $this->posts->countFiledUnder($term)],
-            $this->terms->findAll(),
+            $terms,
         );
 
-        return $this->render('terms', ['rows' => $rows]);
+        return $this->render('terms', [
+            'rows' => $rows,
+            'groups' => $this->isMultilingual() ? $this->terms->findGroups($terms) : [],
+        ]);
     }
 
     public function new(Request $request): Response
@@ -77,9 +81,10 @@ final readonly class BlogTermAdminController
             $term->setLocale($this->locales[0]);
         }
 
-        $form = $this->form($term, $request);
+        $original = $this->startTranslation($request, $term);
+        $form = $this->form($term, $request, $original);
 
-        if ($form->isSubmitted() && $form->isValid() && $this->assignSlug($form, $term)) {
+        if ($form->isSubmitted() && $form->isValid() && $this->assignSlug($form, $term) && $this->joinTranslationGroup($form, $term)) {
             $this->entityManager->persist($term);
             $this->entityManager->flush();
             $this->flash($request, 'success', 'admin.terms.flash.created', ['%name%' => $term->getName()]);
@@ -94,9 +99,9 @@ final readonly class BlogTermAdminController
     {
         $this->denyUnlessAvailable();
         $term = $this->term($id);
-        $form = $this->form($term, $request);
+        $form = $this->form($term, $request, $this->isMultilingual() ? ($this->terms->findVersions($term)[0] ?? null) : null);
 
-        if ($form->isSubmitted() && $form->isValid() && $this->assignSlug($form, $term)) {
+        if ($form->isSubmitted() && $form->isValid() && $this->assignSlug($form, $term) && $this->joinTranslationGroup($form, $term)) {
             $this->entityManager->flush();
             $this->flash($request, 'success', 'admin.terms.flash.updated', ['%name%' => $term->getName()]);
 
@@ -135,12 +140,48 @@ final readonly class BlogTermAdminController
     }
 
     /**
+     * `?translation_of=<id>&locale=<locale>`, from the "Translate into" links of the list.
+     */
+    private function startTranslation(Request $request, AbstractBlogTerm $term): ?AbstractBlogTerm
+    {
+        $id = $request->query->getString('translation_of');
+
+        if (!$this->isMultilingual() || '' === $id) {
+            return null;
+        }
+
+        $original = 1 === preg_match('/^[1-9]\d*$/', $id) ? $this->terms->find((int) $id) : null;
+
+        if (null === $original) {
+            throw new NotFoundHttpException(sprintf('No %s %s to translate.', $this->kind, $id));
+        }
+
+        $locale = $request->query->getString('locale');
+
+        if (\in_array($locale, $this->locales, true)) {
+            $term->setLocale($locale);
+        }
+
+        $term->setTranslationOf($original);
+
+        return $original;
+    }
+
+    /**
      * @return FormInterface<AbstractBlogTerm>
      */
-    private function form(AbstractBlogTerm $term, Request $request): FormInterface
+    private function form(AbstractBlogTerm $term, Request $request, ?AbstractBlogTerm $translationOf = null): FormInterface
     {
+        $candidates = $this->isMultilingual()
+            ? array_values(array_filter($this->terms->findAll(), static fn (AbstractBlogTerm $candidate): bool => $candidate !== $term))
+            : null;
+
         /** @var FormInterface<AbstractBlogTerm> $form */
-        $form = $this->formFactory->create($this->formType, $term, ['locales' => $this->locales]);
+        $form = $this->formFactory->create($this->formType, $term, [
+            'locales' => $this->locales,
+            'translation_candidates' => $candidates,
+            'translation_of' => $translationOf,
+        ]);
         $form->handleRequest($request);
 
         return $form;
@@ -173,6 +214,45 @@ final readonly class BlogTermAdminController
         $term->setSlug($slug);
 
         return true;
+    }
+
+    /**
+     * Joins the group of the term chosen as the original, or leaves the group when none is,
+     * the language chosen being free in it.
+     *
+     * @param FormInterface<AbstractBlogTerm> $form
+     */
+    private function joinTranslationGroup(FormInterface $form, AbstractBlogTerm $term): bool
+    {
+        if (!$form->has('translationOf')) {
+            return true;
+        }
+
+        $field = $form->get('translationOf');
+        $original = $field->getData();
+        \assert(null === $original || $original instanceof AbstractBlogTerm);
+
+        if (null !== $original && $original->getLocale() === $term->getLocale()) {
+            $field->addError(new FormError($this->translator->trans('mulertech_blog.term.translation_same_locale', ['%name%' => $original->getName(), '%locale%' => $term->getLocale()], 'validators')));
+
+            return false;
+        }
+
+        $term->setTranslationOf($original);
+        $existing = $this->terms->findVersion($term->getTranslationGroup(), $term->getLocale(), $term->getId());
+
+        if (null !== $existing) {
+            $field->addError(new FormError($this->translator->trans('mulertech_blog.term.translation_taken', ['%name%' => $existing->getName(), '%locale%' => $term->getLocale()], 'validators')));
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private function isMultilingual(): bool
+    {
+        return \count($this->locales) > 1;
     }
 
     private function term(int $id): AbstractBlogTerm

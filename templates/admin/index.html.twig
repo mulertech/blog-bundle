@@ -28,7 +28,10 @@
                 <thead class="bg-gray-50 text-left text-sm text-gray-600">
                     <tr>
                         <th class="px-4 py-3">{{ 'admin.form.title'|trans({}, 'MulerTechBlogBundle') }}</th>
-                        {% if locales|length > 1 %}<th class="px-4 py-3">{{ 'admin.form.locale'|trans({}, 'MulerTechBlogBundle') }}</th>{% endif %}
+                        {% if locales|length > 1 %}
+                            <th class="px-4 py-3">{{ 'admin.form.locale'|trans({}, 'MulerTechBlogBundle') }}</th>
+                            <th class="px-4 py-3">{{ 'admin.translations.title'|trans({}, 'MulerTechBlogBundle') }}</th>
+                        {% endif %}
                         <th class="px-4 py-3">{{ 'admin.status'|trans({}, 'MulerTechBlogBundle') }}</th>
                         <th class="px-4 py-3">{{ 'admin.views'|trans({}, 'MulerTechBlogBundle') }}</th>
                     </tr>
@@ -37,7 +40,19 @@
                     {% for post in page.items %}
                         <tr class="border-t border-gray-100">
                             <td class="px-4 py-3"><a href="{{ path('mulertech_blog_admin_edit', {id: post.id}) }}" class="font-semibold text-gray-900 hover:underline">{{ post.title }}</a></td>
-                            {% if locales|length > 1 %}<td class="px-4 py-3 uppercase">{{ post.locale }}</td>{% endif %}
+                            {% if locales|length > 1 %}
+                                <td class="px-4 py-3 uppercase">{{ post.locale }}</td>
+                                <td class="px-4 py-3">
+                                    {% include '@MulerTechBlog/admin/_translations.html.twig' with {
+                                        item: post,
+                                        versions: groups[post.translationGroup],
+                                        edit_route: 'mulertech_blog_admin_edit',
+                                        new_route: 'mulertech_blog_admin_new',
+                                        title: post.title,
+                                        locales: locales,
+                                    } only %}
+                                </td>
+                            {% endif %}
                             <td class="px-4 py-3">
                                 {% if post is mulertech_blog_scheduled %}
                                     {{ 'admin.scheduled_on'|trans({'%date%': post.publishedAt|date('admin.datetime_format'|trans({}, 'MulerTechBlogBundle'))}, 'MulerTechBlogBundle') }}

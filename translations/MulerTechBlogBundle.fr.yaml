@@ -67,6 +67,9 @@ admin:
         slug: Slug (adresse)
         slug_help: Minuscules, chiffres et tirets. Laissé vide, il est tiré du titre. Le modifier après publication casse les liens existants.
         locale: Langue
+        translation_of: Traduction de
+        translation_of_help: La version dans une autre langue dont celle-ci est la traduction. Les versions reliées se répondent par le sélecteur de langue du site et par les liens hreflang.
+        no_translation: Aucune, version originale
         content: Contenu
         meta_description: Meta description
         meta_description_help: 150 à 160 caractères, affichés par les moteurs de recherche sous le titre.
@@ -93,12 +96,17 @@ admin:
         slug_help: Minuscules, chiffres et tirets. Laissé vide, il est tiré du nom.
         description: Description
         description_help: Affichée au-dessus des articles de la catégorie.
+        translation_of_help: La version dans une autre langue dont celle-ci est la traduction. Un article en anglais se range sous la version anglaise de sa catégorie.
         delete_confirm: 'Supprimer « %name% » ?'
         flash:
             created: 'Ajout enregistré : « %name% ».'
             updated: 'Modification enregistrée : « %name% ».'
             deleted: 'Suppression effectuée : « %name% ».'
             category_in_use: '« %name% » classe encore %count% article(s) : changez leur catégorie avant de la supprimer.'
+    translations:
+        title: Traductions
+        open: 'Modifier « %title% » en %locale%'
+        translate: Traduire en %locale%
     preview:
         open: Aperçu
         banner_draft: 'Aperçu : cet article n''est pas publié. Vous voyez sa dernière version enregistrée.'

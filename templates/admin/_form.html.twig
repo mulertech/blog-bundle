@@ -5,6 +5,7 @@
     {{ form_row(form.title) }}
     {{ form_row(form.slug) }}
     {% if form.locale is defined %}{{ form_row(form.locale) }}{% endif %}
+    {% if form.translationOf is defined %}{{ form_row(form.translationOf) }}{% endif %}
 
     <div>
         {{ form_label(form.content) }}

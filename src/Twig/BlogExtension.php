@@ -57,6 +57,7 @@ final class BlogExtension extends AbstractExtension
         return [
             new TwigFunction('mulertech_blog_post_url', $this->postUrls->post(...)),
             new TwigFunction('mulertech_blog_feed_url', $this->postUrls->feed(...)),
+            new TwigFunction('mulertech_blog_language_urls', $this->postUrls->languages(...)),
             new TwigFunction('mulertech_blog_file_url', $this->fileUrl(...)),
             new TwigFunction('mulertech_blog_csp_nonce', $this->cspNonce(...)),
         ];

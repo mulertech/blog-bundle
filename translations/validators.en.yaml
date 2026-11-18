@@ -1,0 +1,21 @@
+mulertech_blog:
+    title:
+        blank: The title is required.
+    content:
+        blank: The content is required.
+    slug:
+        format: The slug holds only lowercase letters, digits and hyphens.
+        taken: 'The slug “%slug%” is already taken in this language.'
+    cover:
+        type: 'The featured image must be a JPEG, PNG, WEBP or GIF image.'
+        wrong_size: 'The featured image must be exactly {{ expected }} px; this one is {{ actual }} px.'
+        unreadable: 'The image sent cannot be read: the featured image must be a JPEG, PNG, WEBP or GIF image of {{ expected }} px.'
+    translation:
+        same_locale: '“%title%” is already in %locale%: a translation is in another language.'
+        taken: '“%title%” is already the %locale% version of this article: one version per language.'
+    term:
+        translation_same_locale: '“%name%” is already in %locale%: a translation is in another language.'
+        translation_taken: '“%name%” is already the %locale% version of this term: one version per language.'
+        locale: '“%name%” is in %term_locale%, the article in %locale%: choose a term in the language of the article.'
+        name_blank: The name is required.
+        slug_taken: 'The slug “%slug%” is already taken in this language.'

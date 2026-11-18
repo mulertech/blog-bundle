@@ -43,11 +43,40 @@ final class TranslationsTest extends TestCase
     }
 
     /**
+     * A site translated in several languages holds its own labels to the same keys in each:
+     * a key the bundle gives in one language only breaks that parity on every such site.
+     */
+    #[DataProvider('domainNames')]
+    public function testEveryLanguageHasTheSameKeys(string $domain): void
+    {
+        $keys = [];
+
+        foreach (glob(\dirname(__DIR__).'/translations/'.$domain.'.*.yaml') ?: [] as $file) {
+            $locale = explode('.', basename($file))[1];
+            $keys[$locale] = array_keys(new YamlFileLoader()->load($file, $locale, $domain)->all($domain));
+            sort($keys[$locale]);
+        }
+
+        ksort($keys);
+        self::assertSame(['en', 'fr'], array_keys($keys));
+        self::assertSame($keys['fr'], $keys['en']);
+    }
+
+    /**
      * @return iterable<string, array{string, string, list<string>}>
      */
     public static function domains(): iterable
     {
         yield 'labels' => ['MulerTechBlogBundle', "/'((?:blog|admin)\\.[a-z0-9_.]+)'/", ['templates/*/*.twig', 'src/*/*.php']];
         yield 'validation messages' => ['validators', "/'(mulertech_blog\\.[a-z_.]+)'/", ['src/Form/*.php', 'src/Validator/*.php', 'src/Controller/*.php']];
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function domainNames(): iterable
+    {
+        yield 'labels' => ['MulerTechBlogBundle'];
+        yield 'validation messages' => ['validators'];
     }
 }

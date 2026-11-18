@@ -54,6 +54,32 @@ final readonly class PostUrlGenerator
     }
 
     /**
+     * The address of the article in each language of the site, for a language switcher: the
+     * article itself, its version in that language, else the list of that language. The
+     * same slug in another language would answer 404, or show another article.
+     *
+     * @param list<AbstractBlogPost> $translations the published versions in other languages
+     *
+     * @return array<string, string>
+     */
+    public function languages(AbstractBlogPost $post, array $translations, bool $absolute = false): array
+    {
+        $versions = [$post->getLocale() => $post];
+
+        foreach ($translations as $translation) {
+            $versions[$translation->getLocale()] ??= $translation;
+        }
+
+        $urls = [];
+
+        foreach ($this->locales as $locale) {
+            $urls[$locale] = isset($versions[$locale]) ? $this->post($versions[$locale], $absolute) : $this->index($locale, $absolute);
+        }
+
+        return $urls;
+    }
+
+    /**
      * @return list<string>
      */
     public function locales(): array

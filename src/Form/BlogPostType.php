@@ -60,6 +60,23 @@ class BlogPostType extends AbstractType
             ]);
         }
 
+        if (null !== $options['translation_candidates']) {
+            // Not mapped: the article joins the group of the one chosen, which the
+            // controller does once it has checked the group has no version in its language.
+            $builder->add('translationOf', ChoiceType::class, [
+                'label' => 'admin.form.translation_of',
+                'help' => 'admin.form.translation_of_help',
+                'mapped' => false,
+                'required' => false,
+                'placeholder' => 'admin.form.no_translation',
+                'choices' => $options['translation_candidates'],
+                'data' => $options['translation_of'],
+                'choice_value' => static fn (?AbstractBlogPost $candidate): ?int => $candidate?->getId(),
+                'choice_label' => static fn (AbstractBlogPost $candidate): string => sprintf('%s (%s)', $candidate->getTitle(), $candidate->getLocale()),
+                'choice_translation_domain' => false,
+            ]);
+        }
+
         $builder
             ->add('content', TextareaType::class, [
                 'label' => 'admin.form.content',
@@ -161,6 +178,11 @@ class BlogPostType extends AbstractType
             ->setDefaults(['categories' => null, 'tags' => null])
             ->setAllowedTypes('categories', ['null', AbstractBlogCategory::class.'[]'])
             ->setAllowedTypes('tags', ['null', AbstractBlogTag::class.'[]'])
+            // The articles this one may be the translation of, null on a single-language
+            // site; and the one it already is a version of.
+            ->setDefaults(['translation_candidates' => null, 'translation_of' => null])
+            ->setAllowedTypes('translation_candidates', ['null', AbstractBlogPost::class.'[]'])
+            ->setAllowedTypes('translation_of', ['null', AbstractBlogPost::class])
             // Off on a site that has no column for them (`mulertech_blog.excerpt`, `ai_label`).
             ->setDefaults(['excerpt' => true, 'ai_label' => true])
             ->setAllowedTypes('excerpt', 'bool')
