@@ -17,11 +17,29 @@ jobs:
         with:
           ref: "${{ github.event.release.target_commitish }}"
 
-      - name: Update Changelog
-        uses: stefanzweifel/changelog-updater-action@v1
+      # The changelog-updater action builds its image from an unpinned `php:cli-alpine`,
+      # whose PHP lacks the mbstring extension its phar requires: the phar runs on a
+      # PHP set up here instead.
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
         with:
-          latest-version: "${{ github.event.release.tag_name }}"
-          release-notes: "${{ github.event.release.body }}"
+          php-version: "8.4"
+          extensions: mbstring
+          coverage: none
+          tools: none
+
+      - name: Update Changelog
+        env:
+          RELEASE_NOTES: "${{ github.event.release.body }}"
+          LATEST_VERSION: "${{ github.event.release.tag_name }}"
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/changelog-updater" \
+            https://raw.githubusercontent.com/stefanzweifel/changelog-updater-action/v1.13.0/changelog-updater
+          php "$RUNNER_TEMP/changelog-updater" update \
+            --release-notes="$RELEASE_NOTES" \
+            --latest-version="$LATEST_VERSION" \
+            --write \
+            --no-interaction
 
       - name: Commit updated CHANGELOG
         uses: stefanzweifel/git-auto-commit-action@v7

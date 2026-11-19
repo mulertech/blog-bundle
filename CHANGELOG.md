@@ -1,5 +1,16 @@
 # Release notes for blog-bundle
 
+## v2.0.0 - 2026-11-19
+
+BREAKING CHANGES:
+
+- Requires mulertech/file-bundle ^2.0.
+- An image that cannot be decoded, attachment or cover, throws `MulerTech\BlogBundle\Exception\ImageUnreadable` (extends `\InvalidArgumentException`), instead of `FileException` for an attachment.
+
+Fixes:
+
+- Attaching a file shows the reason only when the file is refused (`FileRejected`, `ImageUnreadable`); a storage fault reaches the error handling of the site instead of passing for a refusal.
+
 ## v1.10.0 - 2026-11-18
 
 ### What's new
