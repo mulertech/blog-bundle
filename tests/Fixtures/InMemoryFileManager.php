@@ -6,6 +6,7 @@ namespace MulerTech\BlogBundle\Tests\Fixtures;
 
 use Doctrine\ORM\EntityManagerInterface;
 use MulerTech\BlogBundle\Tests\Fixtures\Entity\File;
+use MulerTech\FileBundle\Exception\FileRejected;
 use MulerTech\FileBundle\Model\FileInterface;
 use MulerTech\FileBundle\Model\FileUploaderInterface;
 use MulerTech\FileBundle\Service\FileManagerInterface;
@@ -30,7 +31,11 @@ final class InMemoryFileManager implements FileManagerInterface
     public function upload(UploadedFile $file, FileUploaderInterface $uploader, ?object $context = null, bool $isPublic = false): FileInterface
     {
         if ('exe' === $file->getClientOriginalExtension()) {
-            throw new FileException('File type "exe" is not allowed.');
+            throw FileRejected::typeNotAllowed($file->getClientOriginalName(), 'application/x-msdownload', 'File type "exe" is not allowed.');
+        }
+
+        if ('fail' === $file->getClientOriginalExtension()) {
+            throw new FileException(sprintf('Cannot write file to destination directory: "%s".', $this->directory));
         }
 
         $extension = $file->getClientOriginalExtension();

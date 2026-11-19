@@ -6,18 +6,19 @@ namespace MulerTech\BlogBundle\Controller;
 
 use Doctrine\ORM\EntityManagerInterface;
 use MulerTech\BlogBundle\Entity\AbstractBlogPost;
+use MulerTech\BlogBundle\Exception\ImageUnreadable;
 use MulerTech\BlogBundle\Repository\BlogPostRepository;
 use MulerTech\BlogBundle\Repository\BlogTermRepository;
 use MulerTech\BlogBundle\Service\BlogMediaManager;
 use MulerTech\BlogBundle\Service\BlogPostPublisher;
 use MulerTech\BlogBundle\Service\SlugGenerator;
+use MulerTech\FileBundle\Exception\FileRejected;
 use MulerTech\FileBundle\Model\FileInterface;
 use MulerTech\FileBundle\Service\FileManagerInterface;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use Symfony\Component\HttpFoundation\File\Exception\FileException;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -221,8 +222,7 @@ final readonly class BlogAdminController
         try {
             $this->mediaManager->attach($post, $file);
             $this->flash($request, 'success', 'admin.flash.file_added', ['%name%' => $file->getClientOriginalName()]);
-        } catch (FileException $exception) {
-            // The file manager names what is wrong with the file: its size, its type.
+        } catch (FileRejected|ImageUnreadable $exception) {
             $this->flash($request, 'error', 'admin.flash.file_refused', ['%name%' => $file->getClientOriginalName(), '%reason%' => $exception->getMessage()]);
         }
 

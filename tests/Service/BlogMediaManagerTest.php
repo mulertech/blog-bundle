@@ -10,7 +10,7 @@ use MulerTech\BlogBundle\Tests\DatabaseTestCase;
 use MulerTech\BlogBundle\Tests\Fixtures\AdminUser;
 use MulerTech\BlogBundle\Tests\Fixtures\Entity\File;
 use MulerTech\BlogBundle\Tests\Fixtures\InMemoryFileManager;
-use Symfony\Component\HttpFoundation\File\Exception\FileException;
+use MulerTech\BlogBundle\Exception\ImageUnreadable;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Security\Core\Authentication\Token\NullToken;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage;
@@ -159,7 +159,7 @@ final class BlogMediaManagerTest extends DatabaseTestCase
         $path = (string) tempnam(sys_get_temp_dir(), 'cover');
         file_put_contents($path, 'not an image');
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(ImageUnreadable::class);
         $this->expectExceptionMessage('The cover "cover.png" cannot be read as an image.');
 
         $this->manager()->setCover($this->post('Illustré'), new UploadedFile($path, 'cover.png', 'image/png', test: true));
@@ -276,7 +276,7 @@ final class BlogMediaManagerTest extends DatabaseTestCase
         $path = (string) tempnam(sys_get_temp_dir(), 'upload');
         file_put_contents($path, "\xFF\xD8\xFF\xE0".str_repeat('x', 64));
 
-        $this->expectException(FileException::class);
+        $this->expectException(ImageUnreadable::class);
         $this->expectExceptionMessage('The image "abime.jpg" cannot be decoded as image/jpeg.');
 
         $this->manager()->attach($this->post('Abîmé'), new UploadedFile($path, 'abime.jpg', 'image/jpeg', test: true));

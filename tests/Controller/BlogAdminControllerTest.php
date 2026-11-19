@@ -25,6 +25,7 @@ use Symfony\Component\Form\Extension\Validator\ValidatorExtension;
 use Symfony\Component\Form\FormRenderer;
 use Symfony\Component\Form\Forms;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\File\Exception\FileException;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -604,6 +605,23 @@ final class BlogAdminControllerTest extends AdminPageTestCase
         $this->controller()->addFile($this->post_(['_token' => self::TOKEN], ['file' => new UploadedFile($path, 'virus.exe', null, test: true)]), (int) $post->getId());
 
         self::assertSame(['« virus.exe » n\'a pas pu être joint : File type "exe" is not allowed.'], $this->flashes('error'));
+        self::assertCount(0, $post->getFiles());
+    }
+
+    public function testAStorageFaultIsNotPassedOffAsARefusal(): void
+    {
+        $post = $this->post('Avec fichier');
+        $path = (string) tempnam(sys_get_temp_dir(), 'upload');
+        file_put_contents($path, 'content');
+
+        try {
+            $this->controller()->addFile($this->post_(['_token' => self::TOKEN], ['file' => new UploadedFile($path, 'rapport.fail', null, test: true)]), (int) $post->getId());
+            self::fail('A storage fault must reach the error handling of the site.');
+        } catch (FileException $fault) {
+            self::assertStringContainsString('Cannot write file to destination directory', $fault->getMessage());
+        }
+
+        self::assertSame([], $this->flashes('error'));
         self::assertCount(0, $post->getFiles());
     }
 

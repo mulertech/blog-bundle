@@ -27,7 +27,7 @@
         "doctrine/dbal": "^4.0",
         "doctrine/orm": "^3.0",
         "league/commonmark": "^2.0",
-        "mulertech/file-bundle": "^1.2",
+        "mulertech/file-bundle": "^2.0",
         "mulertech/seo-bundle": "^1.7",
         "symfony/asset": "^8.0",
         "symfony/asset-mapper": "^8.0",

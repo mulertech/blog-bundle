@@ -6,11 +6,12 @@ namespace MulerTech\BlogBundle\Service;
 
 use Doctrine\ORM\EntityManagerInterface;
 use MulerTech\BlogBundle\Entity\AbstractBlogPost;
+use MulerTech\BlogBundle\Exception\ImageUnreadable;
 use MulerTech\BlogBundle\Storage\BlogFileTarget;
+use MulerTech\FileBundle\Exception\FileRejected;
 use MulerTech\FileBundle\Model\FileInterface;
 use MulerTech\FileBundle\Model\FileUploaderInterface;
 use MulerTech\FileBundle\Service\FileManagerInterface;
-use Symfony\Component\HttpFoundation\File\Exception\FileException;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
@@ -91,7 +92,8 @@ final readonly class BlogMediaManager
      * A JPEG or PNG image is stored as WebP, turned upright and brought down to
      * ATTACHED_IMAGE_MAX_WIDTH; a WebP already within that width is kept as sent.
      *
-     * @throws FileException when an image cannot be decoded, naming the file
+     * @throws ImageUnreadable when an image cannot be decoded, naming the file
+     * @throws FileRejected    when the file is too large or of a type not allowed
      */
     public function attach(AbstractBlogPost $post, UploadedFile $file, ?FileUploaderInterface $uploader = null): FileInterface
     {
@@ -164,7 +166,7 @@ final readonly class BlogMediaManager
         $bitmap = '' === $contents ? false : @imagecreatefromstring($contents);
 
         if (false === $bitmap) {
-            throw new \InvalidArgumentException(sprintf('The cover "%s" cannot be read as an image.', $image->getClientOriginalName()));
+            throw new ImageUnreadable(sprintf('The cover "%s" cannot be read as an image.', $image->getClientOriginalName()));
         }
 
         return $this->encodeWebp($bitmap, $image->getClientOriginalName());
@@ -182,7 +184,7 @@ final readonly class BlogMediaManager
         $bitmap = '' === $contents ? false : @imagecreatefromstring($contents);
 
         if (false === $bitmap) {
-            throw new FileException(sprintf('The image "%s" cannot be decoded as %s.', $file->getClientOriginalName(), $type));
+            throw new ImageUnreadable(sprintf('The image "%s" cannot be decoded as %s.', $file->getClientOriginalName(), $type));
         }
 
         $upright = 'image/jpeg' === $type ? $this->upright($bitmap, $file->getPathname()) : $bitmap;
