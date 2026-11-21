@@ -19,11 +19,12 @@ jobs:
 
       # The changelog-updater action builds its image from an unpinned `php:cli-alpine`,
       # whose PHP lacks the mbstring extension its phar requires: the phar runs on a
-      # PHP set up here instead.
+      # PHP set up here instead, on the version the phar demands (^8.5), whatever the
+      # versions the package itself supports.
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.4"
+          php-version: "8.5"
           extensions: mbstring
           coverage: none
           tools: none

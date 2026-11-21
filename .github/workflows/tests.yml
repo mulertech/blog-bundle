@@ -2,6 +2,8 @@ name: Tests
 
 on:
   push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
@@ -23,6 +25,7 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           extensions: exif, fileinfo, gd, pdo_sqlite
+          ini-values: error_reporting=E_ALL
           coverage: none
 
       - name: Install dependencies
@@ -48,13 +51,19 @@ jobs:
 
     steps:
       - name: Set git to use LF
-        run: git config --global core.autocrlf false
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
 
       - name: Checkout code
         uses: actions/checkout@v7
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
+        env:
+          # The Windows runner can hold a PHP older than the latest patch, which
+          # roave/security-advisories refuses as soon as that patch fixes a vulnerability.
+          update: true
         with:
           php-version: ${{ matrix.php }}
           extensions: exif, fileinfo, gd, pdo_sqlite
@@ -65,7 +74,8 @@ jobs:
         with:
           composer-options: --prefer-stable --ignore-platform-req=ext-posix
 
-      - name: Check PHP version
+      - name: Check PHPUnit version
+        shell: bash
         run: vendor/bin/phpunit --version
 
       - name: Run tests
@@ -92,6 +102,7 @@ jobs:
         with:
           php-version: '8.4'
           extensions: exif, fileinfo, gd, pdo_sqlite
+          ini-values: error_reporting=E_ALL
           coverage: xdebug
 
       - name: Install dependencies

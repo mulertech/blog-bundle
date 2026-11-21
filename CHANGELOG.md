@@ -1,5 +1,22 @@
 # Release notes for blog-bundle
 
+## v2.1.0 - 2026-11-21
+
+### Fixes
+
+- **No more Doctrine deprecation on every blog page.** Sort directions are passed to the query builder as `\SortDirection` instead of the strings `'ASC'` and `'DESC'`, which `doctrine/orm` 3.7 deprecates. A site logging its deprecations wrote several lines per request on the article list.
+
+### Requirements
+
+- `doctrine/orm` ^3.7, the first version accepting `\SortDirection`.
+- `symfony/polyfill-php86` ^1.37, which provides `\SortDirection` below PHP 8.6.
+
+### Upgrading
+
+No change in the configuration or the templates. A site locked on `doctrine/orm` below 3.7 updates it along with the bundle:
+
+    composer update mulertech/blog-bundle doctrine/orm -W
+
 ## v2.0.0 - 2026-11-19
 
 BREAKING CHANGES:
