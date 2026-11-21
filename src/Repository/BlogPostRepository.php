@@ -95,11 +95,11 @@ final readonly class BlogPostRepository
             }
 
             $query->addSelect(sprintf('CASE WHEN %s THEN 1 ELSE 0 END AS HIDDEN titleMatch', implode(' AND ', $inTitle)))
-                ->orderBy('titleMatch', 'DESC');
+                ->orderBy('titleMatch', \SortDirection::Descending);
         }
 
-        $query->addOrderBy('p.publishedAt', 'DESC')
-            ->addOrderBy('p.id', 'DESC')
+        $query->addOrderBy('p.publishedAt', \SortDirection::Descending)
+            ->addOrderBy('p.id', \SortDirection::Descending)
             ->setFirstResult(($page - 1) * $size)
             ->setMaxResults($size);
 
@@ -118,8 +118,8 @@ final readonly class BlogPostRepository
         $query = $this->entityManager->createQueryBuilder()
             ->select('p')
             ->from($this->postClass, 'p')
-            ->orderBy('p.createdAt', 'DESC')
-            ->addOrderBy('p.id', 'DESC')
+            ->orderBy('p.createdAt', \SortDirection::Descending)
+            ->addOrderBy('p.id', \SortDirection::Descending)
             ->setFirstResult(($page - 1) * $size)
             ->setMaxResults($size);
         $search = null === $search ? '' : mb_strtolower(trim($search));
@@ -145,8 +145,8 @@ final readonly class BlogPostRepository
     public function findRecent(string $locale, int $limit = self::SIDEBAR_SIZE): array
     {
         return $this->results($this->published($locale)
-            ->orderBy('p.publishedAt', 'DESC')
-            ->addOrderBy('p.id', 'DESC')
+            ->orderBy('p.publishedAt', \SortDirection::Descending)
+            ->addOrderBy('p.id', \SortDirection::Descending)
             ->setMaxResults($limit));
     }
 
@@ -156,9 +156,9 @@ final readonly class BlogPostRepository
     public function findPopular(string $locale, int $limit = self::SIDEBAR_SIZE): array
     {
         return $this->results($this->published($locale)
-            ->orderBy('p.viewCount', 'DESC')
-            ->addOrderBy('p.publishedAt', 'DESC')
-            ->addOrderBy('p.id', 'DESC')
+            ->orderBy('p.viewCount', \SortDirection::Descending)
+            ->addOrderBy('p.publishedAt', \SortDirection::Descending)
+            ->addOrderBy('p.id', \SortDirection::Descending)
             ->setMaxResults($limit));
     }
 
@@ -168,12 +168,12 @@ final readonly class BlogPostRepository
      */
     public function findPrevious(AbstractBlogPost $post): ?AbstractBlogPost
     {
-        return $this->neighbour($post, '<', 'DESC');
+        return $this->neighbour($post, '<', \SortDirection::Descending);
     }
 
     public function findNext(AbstractBlogPost $post): ?AbstractBlogPost
     {
-        return $this->neighbour($post, '>', 'ASC');
+        return $this->neighbour($post, '>', \SortDirection::Ascending);
     }
 
     /**
@@ -186,8 +186,8 @@ final readonly class BlogPostRepository
         return $this->results($this->visible($this->entityManager->createQueryBuilder()
             ->select('p')
             ->from($this->postClass, 'p'))
-            ->orderBy('p.publishedAt', 'DESC')
-            ->addOrderBy('p.id', 'DESC'));
+            ->orderBy('p.publishedAt', \SortDirection::Descending)
+            ->addOrderBy('p.id', \SortDirection::Descending));
     }
 
     /**
@@ -204,7 +204,7 @@ final readonly class BlogPostRepository
             ->andWhere('p.locale <> :locale')
             ->setParameter('group', $post->getTranslationGroup())
             ->setParameter('locale', $post->getLocale())
-            ->orderBy('p.locale', 'ASC'));
+            ->orderBy('p.locale', \SortDirection::Ascending));
     }
 
     /**
@@ -246,7 +246,7 @@ final readonly class BlogPostRepository
             ->from($this->postClass, 'p')
             ->where('p.translationGroup IN (:groups)')
             ->setParameter('groups', array_keys($groups))
-            ->orderBy('p.locale', 'ASC'));
+            ->orderBy('p.locale', \SortDirection::Ascending));
 
         foreach ($versions as $version) {
             $groups[$version->getTranslationGroup()][] = $version;
@@ -291,8 +291,8 @@ final readonly class BlogPostRepository
         $query = $this->entityManager->createQueryBuilder()
             ->select('p')
             ->from($this->postClass, 'p')
-            ->orderBy('p.title', 'ASC')
-            ->addOrderBy('p.locale', 'ASC');
+            ->orderBy('p.title', \SortDirection::Ascending)
+            ->addOrderBy('p.locale', \SortDirection::Ascending);
 
         if (null !== $post->getId()) {
             $query->where('p.id <> :id')->setParameter('id', $post->getId());
@@ -392,7 +392,7 @@ final readonly class BlogPostRepository
             ->from($metadata->getAssociationTargetClass($field), 't')
             ->where('t.id IN (:ids)')
             ->setParameter('ids', array_keys($counts))
-            ->orderBy('t.name', 'ASC')
+            ->orderBy('t.name', \SortDirection::Ascending)
             ->getQuery()
             ->getResult();
 
@@ -407,7 +407,7 @@ final readonly class BlogPostRepository
         return $inUse;
     }
 
-    private function neighbour(AbstractBlogPost $post, string $direction, string $order): ?AbstractBlogPost
+    private function neighbour(AbstractBlogPost $post, string $direction, \SortDirection $order): ?AbstractBlogPost
     {
         if (null === $post->getPublishedAt() || null === $post->getId()) {
             return null;
